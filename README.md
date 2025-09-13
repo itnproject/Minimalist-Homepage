@@ -1,9 +1,9 @@
 # Minimalist-Homepage
-点击进入我已部署好的演示网站→[进入](nimenhao.netlify.app "极简首页")
-
 
 极简首页
 一个简洁、美观的浏览器起始页，提供快速搜索功能和个性化体验。
+
+点击进入我已部署好的演示网站→[进入](nimenhao.netlify.app "极简首页")
 
 功能特点
 
