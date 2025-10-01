@@ -31,11 +31,9 @@
 添加快捷导航示范:
 
 **名称:**
-
 哔哩哔哩 
 
 **网址 (URL):**
-
 https://www.bilibili.com/
 #### 总结:名称随便取,网址(URL)格式 https://+网站域名(如www.bilibili.com)
 
