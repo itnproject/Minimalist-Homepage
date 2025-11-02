@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<!--
+    欢迎使用极简首页! 已开源:https://github.com/itnproject/Minimalist-Homepage
+    0.0.5B(测试版)更新:独立代码文件,优化界面和交互体验
+-->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="image/tubiao.png" type="image/tubiao.png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" type="text/css" href="mtcafodue/Minimalist-Homepage.css">
+    <script src="mtcafodue/Minimalist.js"></script>
+    <title>极简首页</title>   
+</head>
+<body>
+<div class="main-container">
+
+    <div class="card">
+        <div class="theme-toggle" onclick="toggleTheme()">
+            <i class="fas fa-moon"></i>
+        </div>
+
+        <div class="logo">
+            <i class="fas fa-home"></i>
+        </div>
+
+        <div id="realTime">--:--:--</div>
+        <h1>极简首页</h1>
+
+        <div class="search-container">
+            <div class="search-box">
+                <input type="text" id="searchInput" class="dynamic-placeholder" placeholder="输入搜索内容...">
+                <button class="search-button" onclick="search()">搜索</button>
+            </div>
+        </div>
+
+        <div class="search-options">
+            <div class="search-option active" data-engine="bing" onclick="setSearchEngine('bing')">必应搜索</div>
+            <div class="search-option" data-engine="baidu" onclick="setSearchEngine('baidu')">百度搜索</div>
+            <div class="search-option" data-engine="google" onclick="setSearchEngine('google')">Google</div>
+            <div class="search-option" data-engine="duckduckgo" onclick="setSearchEngine('duckduckgo')">DuckDuckGo</div>
+            <div class="search-option" data-engine="github" onclick="setSearchEngine('github')">GitHub</div>
+        </div>
+
+        <div class="search-history" id="searchHistory">
+            <div class="history-title">
+                <span>最近搜索</span>
+                <span class="clear-history" onclick="clearHistory()">清空</span>
+            </div>
+            <div class="history-items" id="historyItems">
+            </div>
+        </div>
+    </div>
+
+     <div class="nav-section">
+         <div class="nav-header">
+             <h2 class="nav-title">快捷导航</h2>
+             <button id="addLinkBtn" title="添加新链接"><i class="fas fa-plus"></i> 添加</button>
+         </div>
+         <ul class="nav-links" id="quickNavLinks">
+             <li class="nav-empty" id="navEmptyMessage">暂无快捷链接，请点击“添加”按钮。</li>
+         </ul>
+     </div>
+
+</div>
+
+<div id="linkModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title" id="modalTitle">添加快捷链接</h3>
+            <span class="close">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form id="linkForm">
+                <input type="hidden" id="editIndex">
+                <div class="form-group">
+                    <label for="linkName">名称:</label>
+                    <input type="text" id="linkName" required>
+                </div>
+                <div class="form-group">
+                    <label for="linkUrl">网址 (URL):</label>
+                    <input type="url" id="linkUrl" placeholder="https://example.com" required>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" id="cancelBtn">取消</button>
+            <button class="btn btn-primary" id="saveLinkBtn">保存</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<footer>
+    <p>极简首页 | 已开源</p>
+</footer>
+</body>
+</html>
