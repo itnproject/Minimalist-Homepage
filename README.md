@@ -38,5 +38,5 @@ https://www.bilibili.com/
 #### 总结:名称随便取,网址(URL)格式 https://+网站域名(如www.bilibili.com) http格式也可以使用
 
 ## 安装部署
-只需将 index.html和image文件夹 放置在Web服务器根目录中即可访问😊
+只需将 index.html mtcafodue文件夹和image文件夹 放置在Web服务器根目录中即可访问😊
 
