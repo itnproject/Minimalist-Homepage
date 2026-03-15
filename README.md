@@ -5,6 +5,8 @@
 
 点击进入我已部署好的演示网站→ [进入](https://minimalisthomepage.netlify.app/ "极简首页")(版本并非最新版)🫠
 
+点击进入官方文档→ [进入](https://mhdocs.wicm.top/ "官方文档")
+
 ## 功能特点
 
 🎨 深色/浅色主题切换 - 支持自动保存主题偏好
