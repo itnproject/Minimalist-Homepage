@@ -2,73 +2,105 @@
 <html lang="zh-CN">
 <!--
     欢迎使用极简首页! 已开源:https://github.com/itnproject/Minimalist-Homepage
-    0.0.5B(测试版)更新:独立代码文件,优化界面和交互体验
+    11.3(正式版)更新:重大更新，推荐更新！
+        对于现代UI：
+        - 增加线性动画
+        - 统一R角
+        - 增加光辉效果
+        - 重新整体外观
+        - 调配护眼背景
+        - 加入名言名句
+        - 重新快捷栏
+        - 覆盖原生右键
+        - 公开使用 ⿸
+        对于经典UI：
+        - 增加线性动画
+        - 优化流畅度
+        对于整体：
+        - 修复bug
+    然后喝了冰红茶，我去了某零食太辣了！
 -->
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="shortcut icon" href="image/tubiao.png" type="image/tubiao.png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link rel="stylesheet" type="text/css" href="mtcafodue/Minimalist-Homepage.css">
-    <script src="mtcafodue/Minimalist.js"></script>
+    <link rel="stylesheet" type="text/css" href="Minimalist-Homepage.css">
+    <script src="storage.js"></script>
+    <script src="Minimalist.js"></script>
     <title>极简首页</title>   
 </head>
 <body>
 <div class="main-container">
-
     <div class="card">
-        <div class="theme-toggle" onclick="toggleTheme()">
-            <i class="fas fa-moon"></i>
-        </div>
-
-        <div class="logo">
-            <i class="fas fa-home"></i>
-        </div>
-
-        <div id="realTime">--:--:--</div>
         <h1>极简首页</h1>
-
+        <div id="realTime">--:--:--</div>
         <div class="search-container">
             <div class="search-box">
                 <input type="text" id="searchInput" class="dynamic-placeholder" placeholder="输入搜索内容...">
-                <button class="search-button" onclick="search()">搜索</button>
+                <button class="search-button">搜索</button>
             </div>
         </div>
-
         <div class="search-options">
-            <div class="search-option active" data-engine="bing" onclick="setSearchEngine('bing')">必应搜索</div>
-            <div class="search-option" data-engine="baidu" onclick="setSearchEngine('baidu')">百度搜索</div>
-            <div class="search-option" data-engine="google" onclick="setSearchEngine('google')">Google</div>
-            <div class="search-option" data-engine="duckduckgo" onclick="setSearchEngine('duckduckgo')">DuckDuckGo</div>
-            <div class="search-option" data-engine="github" onclick="setSearchEngine('github')">GitHub</div>
+            <div class="search-option active" data-engine="bing">必应</div>
+            <div class="search-option" data-engine="baidu">百度</div>
+            <div class="search-option" data-engine="google">Google</div>
+            <div class="search-option" data-engine="duckduckgo">DuckDuckGo</div>
+            <div class="search-option" data-engine="github">GitHub</div>
+            <div class="search-option" data-engine="custom" id="customQuickEngine">自定义</div>
         </div>
-
         <div class="search-history" id="searchHistory">
             <div class="history-title">
                 <span>最近搜索</span>
-                <span class="clear-history" onclick="clearHistory()">清空</span>
+                <span class="clear-history">清空</span>
             </div>
             <div class="history-items" id="historyItems">
             </div>
         </div>
     </div>
-
      <div class="nav-section">
          <div class="nav-header">
              <h2 class="nav-title">快捷导航</h2>
-             <button id="addLinkBtn" title="添加新链接"><i class="fas fa-plus"></i> 添加</button>
+             <button id="addLinkBtn" title="添加新链接"></i> 添加</button>
          </div>
          <ul class="nav-links" id="quickNavLinks">
-             <li class="nav-empty" id="navEmptyMessage">暂无快捷链接，请点击“添加”按钮。</li>
+             <li class="nav-empty" id="navEmptyMessage">无快捷导航，请点击“添加”按钮添加。</li>
          </ul>
      </div>
-
 </div>
-
+<div class="modern-ui-container" id="modernUiContainer">
+    <div class="modern-ui-bg" id="modernUiBg"></div>
+    <div class="modern-ui-content">
+        <div class="modern-ui-time" id="modernUiTime">--:--</div>
+        <div class="modern-ui-date" id="modernUiDate"></div>
+        <div class="modern-ui-search">
+            <div class="modern-ui-search-box">
+                <i class="fas fa-search modern-ui-search-icon"></i>
+                <input type="text" id="modernUiSearchInput" placeholder="点击输入文本">
+                <!-- <button class="modern-ui-search-btn" id="modernUiSearchBtn">
+                    <i class="fas fa-arrow-right"></i>
+                </button> -->
+            </div>
+            <div class="modern-ui-engine-selector" id="modernUiEngineSelector">
+                <button class="modern-ui-engine-btn active" data-engine="bing">必应</button>
+                <button class="modern-ui-engine-btn" data-engine="baidu">百度</button>
+                <button class="modern-ui-engine-btn" data-engine="google">Google</button>
+                <button class="modern-ui-engine-btn" data-engine="duckduckgo">DuckDuckGo</button>
+                <button class="modern-ui-engine-btn" data-engine="github">GitHub</button>
+            </div>
+        </div>
+        <div class="modern-ui-quote" id="modernUiQuote"></div>
+    </div>
+    <div class="modern-ui-nav" id="modernUiNav">
+    </div>
+    <button class="modern-ui-settings-btn" id="modernUiSettingsBtn" title="设置">
+        <i class="fas fa-cog"></i>
+    </button>
+</div>
 <div id="linkModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h3 class="modal-title" id="modalTitle">添加快捷链接</h3>
+            <h3 class="modal-title" id="modalTitle" style="color: #6C8DFA;">添加快捷导航</h3>
             <span class="close">&times;</span>
         </div>
         <div class="modal-body">
@@ -76,10 +108,10 @@
                 <input type="hidden" id="editIndex">
                 <div class="form-group">
                     <label for="linkName">名称:</label>
-                    <input type="text" id="linkName" required>
+                    <input type="text" id="linkName" placeholder="极简首页" required>
                 </div>
                 <div class="form-group">
-                    <label for="linkUrl">网址 (URL):</label>
+                    <label for="linkUrl">网址(URL):</label>
                     <input type="url" id="linkUrl" placeholder="https://example.com" required>
                 </div>
             </form>
@@ -90,11 +122,206 @@
         </div>
     </div>
 </div>
-
+<footer><p>极简首页 | 已开源</p></footer>     
 <div class="toast" id="toast"></div>
+<div id="customContextMenu" class="custom-context-menu">
+    <div class="context-menu-item" data-action="refresh">
+        <i class="fas fa-sync-alt"></i>
+        <span>刷新</span>
+    </div>
+    <div class="context-menu-divider"></div>
+    <div class="context-menu-item" data-action="cut">
+        <i class="fas fa-cut"></i>
+        <span>剪切</span>
+    </div>
+    <div class="context-menu-item" data-action="copy">
+        <i class="fas fa-copy"></i>
+        <span>复制</span>
+    </div>
+    <div class="context-menu-item" data-action="paste">
+        <i class="fas fa-paste"></i>
+        <span>粘贴</span>
+    </div>
+</div>
+<img id="settingsBtn" class="settings-toggle" src="image/sz.png" title="选择极简首页就对了" width="20" height="20">
+<div id="settingsModal" class="modal">
+    <div class="modal-content settings-flex">
+        <div class="settings-sidebar">
+            <!---<div class="settings-title" id="settingsSidebarTitle">设置</div>--->
+            <ul>
+                <li data-section="cgsz">常规设置</li>
+                <!---<li data-section="appearance">主题设置</li>--->
+                <li class="active" data-section="general">背景设置</li>
+                <li data-section="engine">搜索引擎</li>
+                <!---<li data-section="nav">快捷导航</li>--->
+                <!---<li data-section="qtapp">其他项目</li>--->
+                <li data-section="expand">管理扩展</li>
+                <li data-section="sygxing">首页更新</li>
+                <li data-section="about">关于首页</li>
+                <li data-section="kfzxx">开发者选项</li><!---彩蛋--->
+            </ul>
+        </div>
+        <div class="settings-main">
+            <div class="modal-header settings-header-fixed">
+                <h3 class="modal-title" id="settingsMainTitle">界面设置</h3>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body settings-section" data-section="general">
+                <div class="form-group">
+                    <label>自定义背景(URL或颜色代码)</label>
+                    <input type="text" id="customBgInput" placeholder="#f5f7fa 或 https://example.com/•••.png">
+                </div>
+                <div class="modal-footer">
+                    <button id="resetBgBtn" class="btn btn-secondary">恢复默认</button>
+                    <button id="applyBgBtn" class="btn btn-primary">应用背景</button>
+                </div>
+            </div>
+             <div class="modal-body settings-section" data-section="engine" style="display:none">
+                <div class="form-group">
+                    <label style="margin-bottom:10px;display:block;">搜索引擎设置</label>
+                    <div class="md3-seg-group" id="engineSegGroup" style="flex-wrap:wrap;">
+                        <button type="button" class="md3-seg-btn" data-engine="bing">必应</button>
+                        <button type="button" class="md3-seg-btn" data-engine="baidu">百度</button>
+                        <button type="button" class="md3-seg-btn" data-engine="google">Google</button>
+                        <button type="button" class="md3-seg-btn" data-engine="duckduckgo">DuckDuckGo</button>
+                        <button type="button" class="md3-seg-btn" data-engine="github">GitHub</button>
+                        <button type="button" class="md3-seg-btn" data-engine="custom" id="customEngineBtn">自定义</button>
+                    </div>
+                    <div id="customEngineInputs" style="display:none;margin-top:18px;">
+                        <input type="text" id="customEngineName" class="md3-input" placeholder="名字" style="margin-bottom:10px;width:100%;max-width:320px;">
+                        <input type="text" id="customEngineUrl" class="md3-input" placeholder="地址(如https://so.com/s?q=%s)" style="width:100%;max-width:320px;">
+                        <button type="button" id="addCustomEngineBtn" class="btn btn-primary" style="margin-top:10px;">添加</button>
+                    </div>
+                    <div id="customEngineList" style="margin-top:10px;"></div>
+                </div>
+            </div>
+            <div class="modal-body settings-section" data-section="nav" style="display:none">
+                <div class="form-group">
+                    <label>快捷导航设置：把它移到设置内就报错，这个区块可能会删除</label><!---删除了,但是还没有-->
+                </div>
+            </div>
+            <div class="modal-body settings-section" data-section="cgsz" style="display:none">
 
-<footer>
-    <p>极简首页 | 已开源</p>
-</footer>
+                <div class="form-group" style="font-weight:bold;margin-bottom:6px;">界面</div>
+                                <div class="theme-demo-group">
+                                    <div style="display:flex;flex-direction:column;align-items:center;">
+                                        <img src="image/ClassicUI.png" alt="经典UI" class="theme-option" data-theme="classic">
+                                        <div class="theme-demo-label">经典UI</div>
+                                    </div>
+                                    <div style="display:flex;flex-direction:column;align-items:center;">
+                                        <img src="image/ModernUI.png" alt="现代UI" class="theme-option" data-theme="modern">
+                                        <div class="theme-demo-label">现代UI</div>
+                                    </div>
+                                </div><style>
+                                    .theme-demo-group {
+                                        display: flex;
+                                        gap: 32px;
+                                        justify-content: center;
+                                        margin: 16px 0 8px 0;}.theme-demo-group img.theme-option {
+                                        width: 150px;
+                                        height: 106px;
+                                        border-radius: 8px;
+                                        border: 2px solid #7c7c7c;
+                                        cursor: pointer;
+                                        transition: border-color 0.2s;
+                                        user-select: none;
+                                        -webkit-user-drag: none;
+                                    }.theme-demo-group img.theme-option.selected {border-color: #6C8DFA;}.theme-demo-label {
+                                        margin-top: 8px;
+                                        font-size: 15px;
+                                        color: #4a5a7a;
+                                        text-align: center;}body.dark-mode .theme-demo-label {color: #e0e0e0;}</style>
+                <div class="form-group modern-ui-hide" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                    <label for="toggleShowTime" style="margin:0;">首页显示时间</label>
+                    <input type="checkbox" id="toggleShowTime" checked style="width:20px;height:20px;">
+                </div>
+                <div class="form-group modern-ui-hide" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                    <label for="toggleShowQuickNav" style="margin:0;">显示快捷导航</label>
+                    <input type="checkbox" id="toggleShowQuickNav" checked style="width:20px;height:20px;">
+                </div>
+
+                <div class="form-group" style="font-weight:bold;margin-bottom:6px;">主题</div>
+                                <div class="theme-demo-group">
+                                    <div style="display:flex;flex-direction:column;align-items:center;">
+                                        <img src="image/light.png" alt="浅色主题" class="theme-option" data-theme="default">
+                                        <div class="theme-demo-label">浅色</div>
+                                    </div>
+                                    <div style="display:flex;flex-direction:column;align-items:center;">
+                                        <img src="image/dark.png" alt="深色主题" class="theme-option" data-theme="dark">
+                                        <div class="theme-demo-label">深色</div>
+                                    </div>
+                                </div><style>
+                                    .theme-demo-group {
+                                        display: flex;
+                                        gap: 32px;
+                                        justify-content: center;
+                                        margin: 16px 0 8px 0;}.theme-demo-group img.theme-option {
+                                        width: 150px;
+                                        height: 106px;
+                                        border-radius: 8px;
+                                        border: 2px solid #7c7c7c;
+                                        cursor: pointer;
+                                        transition: border-color 0.2s;
+                                        user-select: none;
+                                        -webkit-user-drag: none;
+                                    }.theme-demo-group img.theme-option.selected {border-color: #6C8DFA;}.theme-demo-label {
+                                        margin-top: 8px;
+                                        font-size: 15px;
+                                        color: #4a5a7a;
+                                        text-align: center;}body.dark-mode .theme-demo-label {color: #e0e0e0;}</style>
+            </div>
+            <div class="modal-body settings-section" data-section="appearance" style="display:none">
+                <l1abel>制作中...</l1abel><br>
+                <label>冷知识:遇到Bug提交到github后续可能会解决</label>
+            </div>
+            <div class="modal-body settings-section" data-section="qtapp" style="display:none; text-align: center;">
+                <img src="image/jijianfqz.ico" alt="极简番茄钟" class="极简番茄钟logo" width="90" height="90"><br>
+                <label><a href="https://github.com/itnproject/Minimalist-TomatoTimer" target="_blank" style="text-decoration: none; color: #d85831d8;">极简番茄钟</a></label>
+                <br><label>一款好用且美丽的番茄钟</label>
+            </div>
+            <div class="modal-body settings-section" data-section="sygxing" style="display:none; ">
+                <b id="currentVersionLabel">当前版本: </b><l1abel>11.3(正式版)</l1abel>
+                <div id="updateInfo" style="margin-top:10px;"></div>
+                <button id="checkUpdateBtn" class="btn btn-primary" style="margin-top:10px;">检查更新</button>
+                <button id="downloadUpdateBtn" class="btn btn-secondary" style="margin-top:10px;display:none;">立即更新</button>
+            </div>
+            <div class="modal-body settings-section" data-section="expand" style="display:none;">
+                <div class="form-group">
+                    <label style="font-weight:bold;margin-bottom:10px;display:block;">已安装扩展</label>
+                    <div id="extensionList" style="margin-bottom:20px;"></div>
+                    <button id="refreshExtensionsBtn" class="btn btn-secondary">刷新扩展</button>
+                </div>
+                <div class="form-group">
+                    <label style="font-weight:bold;margin-bottom:10px;display:block;">安装新扩展</label>
+                    <!--<div style="margin-bottom:10px;">
+                        <label style="font-weight:bold;">自动安装：</label>
+                        <p style="font-size:14px;color:#666;margin:5px 0;">选择包含扩展子文件夹的目录，系统会自动检测并安装所有有效扩展。</p>
+                        <input type="file" id="autoInstallInput" webkitdirectory multiple style="margin-bottom:5px;">
+                        <button id="autoInstallBtn" class="btn btn-primary">自动安装</button>
+                    </div>-->
+                    <div>
+                        <label style="font-weight:bold;">手动安装：</label>
+                        <p style="font-size:14px;color:#666;margin:5px 0;">选择一个扩展文件夹，必须包含 .itnproject、.itnprojectcss 和 .itnprojectjs 文件。</p>
+                        <input type="file" id="manualInstallInput" webkitdirectory style="margin-bottom:5px;">
+                        <button id="manualInstallBtn" class="btn btn-primary">手动安装</button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-body settings-section" data-section="kfzxx" style="display:none;">
+                <div class="form-group" style="text-align:center;color:rgba(0,0,0,0.5);padding:40px 0;">
+                    <label>没有权限使用开发者选项</label>
+                </div>
+            </div>
+            <div class="modal-body settings-section" data-section="about" style="display:none; text-align: center;">
+                <img src="image/tubiao.png" alt="极简首页" class="极简首页logo" width="90" height="90">
+                <br><label>极简首页</label><br><label>11.3</label><br><br>
+                <label>由itnproject制作</label>
+                <br><label>使用AGPL3.0在github开源</label>
+                <br><label>修改代码后请使用AGPL3.0在Github开源</label><br><br>
+                <label>联系邮箱:itnproject@163.com</label><br><label>不一定准时回复,所以请耐心等待</label>
+            </div>
+        </div>
+    </div>
+</div>
 </body>
 </html>
