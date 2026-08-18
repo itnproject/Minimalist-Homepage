@@ -306,17 +306,27 @@ select, textarea, button, label {
     display: flex;
     flex-direction: column;
     height: 100%;
-    overflow-y: auto;
-    scrollbar-width: none;
-    settings-main::-webkit-scrollbar {
-        display: none; 
-    }
+    overflow: hidden;
+}
+body #settingsModal .modal-header.settings-header-fixed {
+    position: static;
+    z-index: 10;
+    background: transparent;
+    flex-shrink: 0;
+    padding-bottom: 16px;
+    margin-bottom: 16px;
 }
 .settings-section {
-    margin-top: 18px;
+    flex: 1;
+    margin-top: 0;
     opacity: 1;
     visibility: visible;
     transition: opacity 0.3s linear, visibility 0.3s linear;
+    overflow-y: auto;
+    scrollbar-width: none;
+}
+.settings-section::-webkit-scrollbar {
+    display: none; 
 }
 
 .settings-section[style*="display:none"] {
@@ -836,6 +846,10 @@ style>
             margin-bottom: 18px;
             border-bottom: 1px solid #e0e3e7;
             padding-bottom: 10px;
+            position: sticky;
+            top: 0;
+            background: inherit;
+            z-index: 10;
         }
 
         .modal-title {
@@ -848,13 +862,17 @@ style>
 
         .close {
             color: #6f747b;
-            font-size: 28px;
+            font-size: 2rem;
             font-weight: 400;
             cursor: pointer;
             background: none;
             border: none;
             padding: 0 8px;
             transition: color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 32px;
         }
         .close:hover,
         .close:focus {
@@ -932,6 +950,183 @@ style>
         .btn-secondary:hover {
             background: #d0bcff;
             color: #381e72;
+        }
+
+        .extension-list-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 12px;
+            border: 1px solid rgba(0,0,0,0.08);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            background: rgba(0,0,0,0.02);
+            transition: background 0.2s, border-color 0.2s;
+        }
+        .extension-list-item:hover {
+            background: rgba(0,0,0,0.05);
+            border-color: rgba(0,0,0,0.15);
+        }
+        .extension-list-item .extension-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+        }
+        .extension-list-item .extension-status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .extension-list-item .extension-status-dot.enabled {
+            background: #4caf50;
+            box-shadow: 0 0 6px rgba(76,175,80,0.4);
+        }
+        .extension-list-item .extension-status-dot.disabled {
+            background: #bbb;
+        }
+        .extension-list-item .extension-text {
+            min-width: 0;
+        }
+        .extension-list-item .extension-name {
+            font-weight: 600;
+            font-size: 14px;
+            color: inherit;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .extension-list-item .extension-path {
+            font-size: 11px;
+            color: #999;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .ext-type-badge {
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 500;
+            padding: 1px 6px;
+            border-radius: 3px;
+            margin-left: 6px;
+            vertical-align: middle;
+            line-height: 1.5;
+        }
+        .ext-type-theme {
+            background: rgba(147, 112, 219, 0.15);
+            color: #9370db;
+        }
+        .ext-type-plugin {
+            background: rgba(70, 130, 180, 0.15);
+            color: #4682b4;
+        }
+        .ext-version {
+            font-size: 11px;
+            color: #aaa;
+            margin-left: 6px;
+            font-weight: 400;
+        }
+        .extension-list-item .extension-actions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+        .extension-list-item .extension-btn {
+            padding: 4px 10px;
+            border: 1px solid rgba(0,0,0,0.12);
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            background: rgba(0,0,0,0.04);
+            color: rgba(0,0,0,0.7);
+            transition: background 0.2s, color 0.2s, border-color 0.2s;
+        }
+        .extension-list-item .extension-btn:hover {
+            background: rgba(0,0,0,0.1);
+            color: rgba(0,0,0,0.9);
+        }
+        .extension-list-item .extension-btn.delete-btn {
+            color: #c62828;
+            border-color: rgba(198,40,40,0.2);
+        }
+        .extension-list-item .extension-btn.delete-btn:hover {
+            background: rgba(198,40,40,0.08);
+            color: #b71c1c;
+            border-color: rgba(198,40,40,0.4);
+        }
+        .extension-empty {
+            text-align: center;
+            padding: 24px;
+            color: #999;
+            font-size: 13px;
+            border: 1px dashed rgba(0,0,0,0.12);
+            border-radius: 8px;
+        }
+
+        .extension-install-section {
+            border: 1px solid rgba(0,0,0,0.08);
+            border-radius: 8px;
+            padding: 14px;
+            background: rgba(0,0,0,0.02);
+        }
+        .extension-install-header {
+            font-weight: bold;
+            font-size: 15px;
+            margin-bottom: 6px;
+        }
+        .extension-install-desc {
+            font-size: 12px;
+            color: #999;
+            margin: 0 0 10px 0;
+            line-height: 1.4;
+        }
+
+        .dark-mode .extension-list-item {
+            border-color: rgba(255,255,255,0.08);
+            background: rgba(255,255,255,0.03);
+        }
+        .dark-mode .extension-list-item:hover {
+            background: rgba(255,255,255,0.06);
+            border-color: rgba(255,255,255,0.15);
+        }
+        .dark-mode .extension-list-item .extension-btn {
+            background: rgba(255,255,255,0.05);
+            color: rgba(255,255,255,0.7);
+            border-color: rgba(255,255,255,0.12);
+        }
+        .dark-mode .extension-list-item .extension-btn:hover {
+            background: rgba(255,255,255,0.12);
+            color: rgba(255,255,255,0.9);
+        }
+        .dark-mode .extension-list-item .extension-btn.delete-btn {
+            color: #ef5350;
+            border-color: rgba(239,83,80,0.25);
+        }
+        .dark-mode .extension-list-item .extension-btn.delete-btn:hover {
+            background: rgba(239,83,80,0.12);
+            color: #ff8a80;
+            border-color: rgba(239,83,80,0.5);
+        }
+        .dark-mode .extension-list-item .extension-path {
+            color: #888;
+        }
+        .dark-mode .extension-list-item .extension-status-dot.disabled {
+            background: #666;
+        }
+        .dark-mode .extension-empty {
+            color: #777;
+            border-color: rgba(255,255,255,0.1);
+        }
+
+        .dark-mode .extension-install-section {
+            border-color: rgba(255,255,255,0.08);
+            background: rgba(255,255,255,0.02);
+        }
+        .dark-mode .extension-install-desc {
+            color: #888;
         }
 
         .nav-empty {
@@ -1100,12 +1295,14 @@ body.modern-ui #settingsModal {
     display: block;
     opacity: 0;
     visibility: hidden;
+    pointer-events: none;
     transition: opacity 0.2s ease, visibility 0.2s ease;
 }
 
 body.modern-ui #settingsModal.show {
     opacity: 1;
     visibility: visible;
+    pointer-events: auto;
 }
 
 body.modern-ui #settingsModal.closing {
@@ -1362,7 +1559,15 @@ body.modern-ui #settingsModal .close:hover {
     color: #fff;
 }
 
+body.modern-ui #settingsModal .form-group label {
+    color: rgba(255,255,255,0.8);
+}
+
 body.modern-ui .modern-ui-hide {
+    display: none !important;
+}
+
+body:not(.modern-ui) .classic-ui-hide {
     display: none !important;
 }
 
@@ -1495,6 +1700,17 @@ body.modern-ui .modern-ui-hide {
     border-radius: 12px;
     border: 1px solid rgba(255,255,255,0.1);
     box-shadow: 0 0 20px rgba(255,255,255,0.05), inset 0 0 20px rgba(255,255,255,0.03);
+    transition: transform 0.3s ease;
+}
+
+.modern-ui-nav.auto-hide {
+    transform: translateX(-50%) translateY(calc(100% + 20px));
+}
+
+.hide-settings-btn #modernUiSettingsBtn,
+.hide-settings-btn #settingsBtn {
+    opacity: 0.01;
+    pointer-events: auto;
 }
 
 .modern-ui-nav-item {
@@ -1571,6 +1787,9 @@ body.modern-ui .modern-ui-hide {
     gap: 10px;
     margin-top: 15px;
     justify-content: center;
+}
+.modern-ui-engine-selector.hidden {
+    display: none !important;
 }
 
 .custom-context-menu {
@@ -2186,4 +2405,32 @@ body:not(.dark-mode) .toast {
     .modern-ui-search input {
         font-size: 0.9rem;
     }
+}
+.theme-demo-group {
+    display: flex;
+    gap: 32px;
+    justify-content: center;
+    margin: 16px 0 8px 0;
+}
+.theme-demo-group img.theme-option {
+    width: 150px;
+    height: 106px;
+    border-radius: 8px;
+    border: 2px solid #7c7c7c;
+    cursor: pointer;
+    transition: border-color 0.2s;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+.theme-demo-group img.theme-option.selected {
+    border-color: #6C8DFA;
+}
+.theme-demo-label {
+    margin-top: 8px;
+    font-size: 15px;
+    color: #4a5a7a;
+    text-align: center;
+}
+body.dark-mode .theme-demo-label {
+    color: #e0e0e0;
 }

@@ -6,6 +6,191 @@ let customLinks = SyncStorage.getItem('customLinks', []);
 let expandDir = SyncStorage.getItem('expandDir', 'Expand');
 let extensions = SyncStorage.getItem('extensions', []);
 let loadedExtensions = [];
+let enableExtensions = SyncStorage.getItem('enableExtensions', '1');
+
+const ExtDB = (function() {
+    const DB_NAME = 'MHEXP';
+    const DB_VERSION = 1;
+    const STORE_NAME = 'extensions';
+    let db = null;
+
+    function open() {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open(DB_NAME, DB_VERSION);
+            request.onupgradeneeded = (e) => {
+                const d = e.target.result;
+                if (!d.objectStoreNames.contains(STORE_NAME)) {
+                    d.createObjectStore(STORE_NAME, { keyPath: 'id' });
+                }
+            };
+            request.onsuccess = (e) => { db = e.target.result; resolve(db); };
+            request.onerror = (e) => reject(e.target.error);
+        });
+    }
+
+    function ensureDB() {
+        if (db) return Promise.resolve(db);
+        return open();
+    }
+
+    async function saveExtension(id, metadata, files) {
+        await ensureDB();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE_NAME, 'readwrite');
+            const store = tx.objectStore(STORE_NAME);
+            store.put({ id, ...metadata, files, updatedAt: Date.now() });
+            tx.oncomplete = () => resolve();
+            tx.onerror = (e) => reject(e.target.error);
+        });
+    }
+
+    async function getExtension(id) {
+        await ensureDB();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE_NAME, 'readonly');
+            const store = tx.objectStore(STORE_NAME);
+            const req = store.get(id);
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = (e) => reject(e.target.error);
+        });
+    }
+
+    async function getAllExtensions() {
+        await ensureDB();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE_NAME, 'readonly');
+            const store = tx.objectStore(STORE_NAME);
+            const req = store.getAll();
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = (e) => reject(e.target.error);
+        });
+    }
+
+    async function deleteExtension(id) {
+        await ensureDB();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE_NAME, 'readwrite');
+            const store = tx.objectStore(STORE_NAME);
+            store.delete(id);
+            tx.oncomplete = () => resolve();
+            tx.onerror = (e) => reject(e.target.error);
+        });
+    }
+
+    return { saveExtension, getExtension, getAllExtensions, deleteExtension };
+})();
+
+const _extApi = (function() {
+    const api = {
+        showToast: function(msg) {
+            if (typeof showToast === 'function') showToast(msg);
+        },
+        getSetting: function(key, defaultValue) {
+            return SyncStorage.getItem(key, defaultValue);
+        },
+        setSetting: function(key, value) {
+            SyncStorage.setItem(key, value);
+        },
+        addStyle: function(css) {
+            const style = document.createElement('style');
+            style.textContent = css;
+            style.setAttribute('data-ext-css', '1');
+            document.head.appendChild(style);
+            return style;
+        },
+        addElement: function(html) {
+            const div = document.createElement('div');
+            div.innerHTML = html;
+            document.body.appendChild(div);
+            return div;
+        },
+        createButton: function(text, config) {
+            config = config || {};
+            const btn = document.createElement('button');
+            btn.textContent = text;
+            btn.className = 'btn';
+            if (config.variant === 'primary') btn.classList.add('btn-primary');
+            else if (config.variant === 'secondary') btn.classList.add('btn-secondary');
+            if (config.onClick) btn.addEventListener('click', config.onClick);
+            if (config.id) btn.id = config.id;
+            if (config.style) Object.assign(btn.style, config.style);
+            return btn;
+        },
+        createToggle: function(config) {
+            config = config || {};
+            const label = document.createElement('label');
+            label.className = 'toggle-switch';
+            const input = document.createElement('input');
+            input.type = 'checkbox';
+            if (config.checked) input.checked = true;
+            const span = document.createElement('span');
+            span.className = 'toggle-slider';
+            label.appendChild(input);
+            label.appendChild(span);
+            if (config.label) {
+                const text = document.createElement('span');
+                text.textContent = config.label;
+                text.style.cssText = 'margin-left:8px;font-size:13px;vertical-align:middle;';
+                label.appendChild(text);
+            }
+            if (config.onChange) {
+                input.addEventListener('change', function() {
+                    config.onChange(input.checked);
+                });
+            }
+            return label;
+        },
+        createInput: function(placeholder, config) {
+            config = config || {};
+            const wrapper = document.createElement('div');
+            wrapper.className = 'form-group';
+            wrapper.style.marginBottom = '12px';
+            const input = document.createElement('input');
+            input.placeholder = placeholder || '';
+            input.type = config.type || 'text';
+            if (config.value) input.value = config.value;
+            if (config.id) input.id = config.id;
+            if (config.onChange) input.addEventListener('input', config.onChange);
+            wrapper.appendChild(input);
+            return wrapper;
+        },
+        createCard: function(config) {
+            config = config || {};
+            const card = document.createElement('div');
+            card.className = 'extension-list-item';
+            card.style.cssText = 'flex-direction:column;align-items:stretch;padding:14px 16px;';
+            if (config.title) {
+                const title = document.createElement('div');
+                title.className = 'extension-name';
+                title.textContent = config.title;
+                card.appendChild(title);
+            }
+            if (config.content) {
+                const body = document.createElement('div');
+                body.className = 'extension-path';
+                if (typeof config.content === 'string') body.textContent = config.content;
+                else body.appendChild(config.content);
+                card.appendChild(body);
+            }
+            if (config.id) card.id = config.id;
+            return card;
+        },
+        getSearchEngine: function() {
+            return currentEngine;
+        },
+        isDarkMode: function() {
+            return isDarkMode;
+        },
+        getCurrentBackground: function() {
+            return customBackground;
+        },
+        getSearchHistory: function() {
+            return searchHistory;
+        }
+    };
+    Object.freeze(api);
+    return api;
+})();
 
 function onCustomQuickEngineClick() {
     var customEngines = SyncStorage.getItem('customEngines', []);
@@ -82,13 +267,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (theme === 'classic' || theme === 'modern') {
                     var isModernUi = (theme === 'modern');
                     SyncStorage.setItem('modernUiEnabled', isModernUi);
-                    if (isModernUi) {
-                        document.body.classList.add('modern-ui');
-                        if (typeof initModernUi === 'function') initModernUi();
-                    } else {
-                        document.body.classList.remove('modern-ui');
-                    }
-                    updateUiSelection();
+                    location.reload();
                 } else if (theme === 'dark') {
                     if (!isDarkMode) {
                         toggleTheme();
@@ -235,7 +414,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const sections = document.querySelectorAll('.settings-section');
     const mainTitle = document.getElementById('settingsMainTitle');
     const sectionTitles = {
-        general: '界面设置',
+        general: '综合设置',
         engine: '搜索引擎',
         nav: '快捷导航',
         cgsz: '常规设置',
@@ -512,7 +691,7 @@ function search() {
     window.location.href = searchUrl;
 }
 
-function setSearchEngine(engine) {
+function setSearchEngine(engine, silent) {
     currentEngine = engine;
     const options = document.querySelectorAll('.search-option');
     options.forEach(option => option.classList.remove('active'));
@@ -525,7 +704,9 @@ function setSearchEngine(engine) {
         try{arr=SyncStorage.getItem('customEngines',[]);}catch(e){}
         if(arr[idx]) engineName = arr[idx].name;
     }
-    showToast(`已切换到${engineName||'未知引擎'}搜索`);
+    if (!silent) {
+        showToast(`已切换到${engineName||'未知引擎'}搜索`);
+    }
     updatePlaceholder();
 }
 
@@ -599,7 +780,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (searchBtn) {
         searchBtn.onclick = function() { search(); };
     }
-    setSearchEngine(currentEngine);
+    setSearchEngine(currentEngine, true);
     modal = document.getElementById("linkModal");
     modalTitle = document.getElementById("modalTitle");
     linkForm = document.getElementById("linkForm");
@@ -637,6 +818,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 if (index === "") {
+                    if (customLinks.length >= 14) {
+                        showToast('快捷栏最多只能添加14个');
+                        return;
+                    }
                     addLink(name, fullUrl);
                     showToast('快捷导航已添加');
                 } else {
@@ -876,13 +1061,21 @@ applyCustomBackground(customBackground);
     if (updateInfoDiv) fetchLatestRelease();
 });
 
-function loadExtensions() {
+function unloadAllExtensions() {
     loadedExtensions.forEach(ext => {
-        if (ext.type === 'css' && ext.element) {
-            document.head.removeChild(ext.element);
+        if (ext.element && ext.element.parentNode) {
+            ext.element.parentNode.removeChild(ext.element);
         }
     });
+    document.querySelectorAll('[data-ext-id]').forEach(el => {
+        if (el.parentNode) el.parentNode.removeChild(el);
+    });
     loadedExtensions = [];
+}
+
+function loadExtensions() {
+    unloadAllExtensions();
+    if (enableExtensions !== '1') return;
 
     extensions.forEach(ext => {
         if (!ext.enabled) return;
@@ -891,72 +1084,44 @@ function loadExtensions() {
 }
 
 function loadExtension(ext) {
-    if (!ext.files) {
-        const folder = ext.path;
-        const files = [
-            `${expandDir}/${folder}/index.itnproject`,
-            `${expandDir}/${folder}/index.itnprojectcss`,
-            `${expandDir}/${folder}/index.itnprojectjs`,
-            `${expandDir}/${folder}/main.itnproject`,
-            `${expandDir}/${folder}/main.itnprojectcss`,
-            `${expandDir}/${folder}/main.itnprojectjs`
-        ];
-
-        files.forEach(filePath => {
-            fetch(filePath)
-                .then(response => {
-                    if (!response.ok) return;
-                    return response.text();
-                })
-                .then(content => {
-                    if (!content) return;
-                    const type = filePath.endsWith('.itnprojectjs') ? 'js' :
-                                 filePath.endsWith('.itnprojectcss') ? 'css' : 'project';
-                    if (type === 'js') {
-                        try {
-                            eval(content);
-                            loadedExtensions.push({ ...ext, loaded: true, file: filePath });
-                        } catch (e) {
-                            console.error('Error loading JS extension:', ext.name, filePath, e);
-                        }
-                    } else if (type === 'css') {
-                        const style = document.createElement('style');
-                        style.textContent = content;
-                        document.head.appendChild(style);
-                        loadedExtensions.push({ ...ext, loaded: true, file: filePath, element: style });
-                    } else if (type === 'project') {
-                        const div = document.createElement('div');
-                        div.innerHTML = content;
-                        document.body.appendChild(div);
-                        loadedExtensions.push({ ...ext, loaded: true, file: filePath, element: div });
-                    }
-                })
-                .catch(e => {});
-        });
+    if (!ext.id) {
+        console.warn('扩展缺少 ID，跳过加载:', ext.name);
         return;
     }
-    Object.keys(ext.files).forEach(fileName => {
-        const content = ext.files[fileName];
-        const type = fileName.endsWith('.itnprojectjs') ? 'js' :
-                     fileName.endsWith('.itnprojectcss') ? 'css' : 'project';
-        if (type === 'js') {
-            try {
-                eval(content);
-                loadedExtensions.push({ ...ext, loaded: true, file: fileName });
-            } catch (e) {
-                console.error('Error loading JS extension:', ext.name, fileName, e);
-            }
-        } else if (type === 'css') {
-            const style = document.createElement('style');
-            style.textContent = content;
-            document.head.appendChild(style);
-            loadedExtensions.push({ ...ext, loaded: true, file: fileName, element: style });
-        } else if (type === 'project') {
-            const div = document.createElement('div');
-            div.innerHTML = content;
-            document.body.appendChild(div);
-            loadedExtensions.push({ ...ext, loaded: true, file: fileName, element: div });
+    ExtDB.getExtension(ext.id).then(record => {
+        if (!record || !record.files) {
+            console.warn('扩展数据不存在于 IndexedDB:', ext.id);
+            return;
         }
+        Object.keys(record.files).forEach(fileName => {
+            const content = record.files[fileName];
+            const type = fileName.endsWith('.itnprojectjs') ? 'js' :
+                         fileName.endsWith('.itnprojectcss') ? 'css' : 'project';
+            if (type === 'js') {
+                try {
+                    const api = _extApi || {};
+                    const wrapped = '(function(' + Object.keys(api).join(',') + '){' + content + '\n})';
+                    eval(wrapped).apply(null, Object.keys(api).map(k => api[k]));
+                    loadedExtensions.push({ ...ext, loaded: true, file: fileName });
+                } catch (e) {
+                    console.error('Error loading JS extension:', ext.name, fileName, e);
+                }
+            } else if (type === 'css') {
+                const style = document.createElement('style');
+                style.textContent = content;
+                style.setAttribute('data-ext-id', ext.id);
+                document.head.appendChild(style);
+                loadedExtensions.push({ ...ext, loaded: true, file: fileName, element: style });
+            } else if (type === 'project') {
+                const div = document.createElement('div');
+                div.innerHTML = content;
+                div.setAttribute('data-ext-id', ext.id);
+                document.body.appendChild(div);
+                loadedExtensions.push({ ...ext, loaded: true, file: fileName, element: div });
+            }
+        });
+    }).catch(e => {
+        console.error('加载扩展失败:', ext.name, e);
     });
 }
 
@@ -969,39 +1134,47 @@ function renderExtensionList() {
     if (!listDiv) return;
     listDiv.innerHTML = '';
     if (extensions.length === 0) {
-        listDiv.innerHTML = '<p>暂无安装的扩展。</p>';
+        listDiv.innerHTML = '<div class="extension-empty">暂无安装的扩展</div>';
         return;
     }
     extensions.forEach((ext, index) => {
         const div = document.createElement('div');
-        div.style.display = 'flex';
-        div.style.alignItems = 'center';
-        div.style.justifyContent = 'space-between';
-        div.style.padding = '8px';
-        div.style.border = '1px solid #ddd';
-        div.style.borderRadius = '4px';
-        div.style.marginBottom = '8px';
+        div.className = 'extension-list-item';
 
         const info = document.createElement('div');
-        info.innerHTML = `<strong>${ext.name}</strong><br><small>${expandDir}/${ext.path}/</small>`;
+        info.className = 'extension-info';
+
+        const dot = document.createElement('span');
+        dot.className = 'extension-status-dot ' + (ext.enabled ? 'enabled' : 'disabled');
+
+        const text = document.createElement('div');
+        text.className = 'extension-text';
+        const typeLabel = ext.type === 'theme' ? '主题' : '插件';
+        const typeClass = ext.type === 'theme' ? 'ext-type-theme' : 'ext-type-plugin';
+        text.innerHTML = `<div class="extension-name">${ext.name} <span class="ext-type-badge ${typeClass}">${typeLabel}</span><span class="ext-version">v${ext.version || '1.0.0'}</span></div><div class="extension-path">${ext.author || '未知'}${ext.description ? ' · ' + ext.description : ''}</div>`;
+
+        info.appendChild(dot);
+        info.appendChild(text);
 
         const controls = document.createElement('div');
+        controls.className = 'extension-actions';
+
         const toggleBtn = document.createElement('button');
         toggleBtn.textContent = ext.enabled ? '禁用' : '启用';
-        toggleBtn.className = 'btn btn-secondary';
-        toggleBtn.style.marginRight = '8px';
+        toggleBtn.className = 'extension-btn';
         toggleBtn.onclick = () => {
             ext.enabled = !ext.enabled;
             saveExtensions();
             renderExtensionList();
-            loadExtensions(); 
+            loadExtensions();
         };
 
         const deleteBtn = document.createElement('button');
         deleteBtn.textContent = '删除';
-        deleteBtn.className = 'btn btn-secondary';
+        deleteBtn.className = 'extension-btn delete-btn';
         deleteBtn.onclick = () => {
             if (confirm('确定删除此扩展？')) {
+                if (ext.id) { ExtDB.deleteExtension(ext.id).catch(() => {}); }
                 extensions.splice(index, 1);
                 saveExtensions();
                 renderExtensionList();
@@ -1011,7 +1184,6 @@ function renderExtensionList() {
 
         controls.appendChild(toggleBtn);
         controls.appendChild(deleteBtn);
-
         div.appendChild(info);
         div.appendChild(controls);
         listDiv.appendChild(div);
@@ -1129,6 +1301,35 @@ function processManualInstall(files) {
     });
 }
 
+function installExtension(folderName, extFiles) {
+    const projFile = Object.keys(extFiles).find(k => k.endsWith('.itnproject'));
+    let meta = { name: folderName, version: '1.0.0', author: '未知', description: '', type: 'plugin' };
+    if (projFile) {
+        try {
+            const parsed = JSON.parse(extFiles[projFile]);
+            if (parsed.name) meta.name = parsed.name;
+            if (parsed.version) meta.version = parsed.version;
+            if (parsed.author) meta.author = parsed.author;
+            if (parsed.description) meta.description = parsed.description;
+            if (parsed.type) meta.type = parsed.type;
+        } catch (e) {
+            console.warn('解析 .itnproject 失败，使用默认元数据:', e);
+        }
+    }
+    const id = 'ext-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+    ExtDB.saveExtension(id, meta, extFiles).then(() => {
+        const extEntry = { id, name: meta.name, version: meta.version, author: meta.author, description: meta.description, type: meta.type, enabled: true };
+        extensions.push(extEntry);
+        saveExtensions();
+        renderExtensionList();
+        loadExtension(extEntry);
+        showToast('扩展 "' + meta.name + '" 安装成功');
+    }).catch((e) => {
+        console.error('保存扩展到 IndexedDB 失败:', e);
+        showToast('扩展安装失败: ' + e.message);
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const expandDirInput = document.getElementById('expandDirInput');
     if (expandDirInput) {
@@ -1178,8 +1379,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const manualInstallBtn = document.getElementById('manualInstallBtn');
     const manualInstallInput = document.getElementById('manualInstallInput');
+
     if (manualInstallBtn && manualInstallInput) {
-        manualInstallBtn.onclick = () => {
+        manualInstallBtn.addEventListener('click', function() {
+            manualInstallInput.click();
+        });
+        manualInstallInput.addEventListener('change', function() {
             const files = manualInstallInput.files;
             if (files.length === 0) {
                 showToast('请选择扩展文件夹');
@@ -1187,7 +1392,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             processManualInstall(files);
             manualInstallInput.value = '';
-        };
+        });
     }
 });
 
@@ -1221,7 +1426,7 @@ document.addEventListener('DOMContentLoaded', function() {
         "书山有路勤为径，学海无涯苦作舟。"
     ];
 
-    let isModernUi = SyncStorage.getItem('modernUiEnabled', false);
+    let isModernUi = SyncStorage.getItem('modernUiEnabled', true);
 
     function applyModernUiState() {
         if (isModernUi) {
@@ -1267,55 +1472,37 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function showRandomQuote() {
         if (!modernUiQuote) return;
+        let showQuote = SyncStorage.getItem('showQuote', '1');
+        if (showQuote !== '1') return;
+        const fallbackQuotes = [
+            "桃李不言，下自成蹊。",
+            "路漫漫其修远兮，吾将上下而求索。",
+            "千里之行，始于足下。",
+            "学而不思则罔，思而不学则殆。",
+            "知之为知之，不知为不知，是知也。",
+            "三人行，必有我师焉。",
+            "己所不欲，勿施于人。",
+            "温故而知新，可以为师矣。",
+            "逝者如斯夫，不舍昼夜。",
+            "天行健，君子以自强不息。",
+            "地势坤，君子以厚德载物。",
+            "不积跬步，无以至千里。",
+            "锲而不舍，金石可镂。",
+            "宝剑锋从磨砺出，梅花香自苦寒来。",
+            "书山有路勤为径，学海无涯苦作舟。"
+        ];
+        const randomIndex = Math.floor(Math.random() * fallbackQuotes.length);
+        modernUiQuote.textContent = `「 ${fallbackQuotes[randomIndex]} 」`;
+        
         fetch('https://v2.jinrishici.com/one.json')
             .then(response => response.json())
             .then(data => {
                 if (data.data && data.data.content) {
                     const content = data.data.content;
                     modernUiQuote.textContent = `「 ${content} 」`;
-                } else {
-                    const fallbackQuotes = [
-                        "桃李不言，下自成蹊。",
-                        "路漫漫其修远兮，吾将上下而求索。",
-                        "千里之行，始于足下。",
-                        "学而不思则罔，思而不学则殆。",
-                        "知之为知之，不知为不知，是知也。",
-                        "三人行，必有我师焉。",
-                        "己所不欲，勿施于人。",
-                        "温故而知新，可以为师矣。",
-                        "逝者如斯夫，不舍昼夜。",
-                        "天行健，君子以自强不息。",
-                        "地势坤，君子以厚德载物。",
-                        "不积跬步，无以至千里。",
-                        "锲而不舍，金石可镂。",
-                        "宝剑锋从磨砺出，梅花香自苦寒来。",
-                        "书山有路勤为径，学海无涯苦作舟。"
-                    ];
-                    const randomIndex = Math.floor(Math.random() * fallbackQuotes.length);
-                    modernUiQuote.textContent = `「 ${fallbackQuotes[randomIndex]} 」`;
                 }
             })
             .catch(error => {
-                console.log('诗词 API 加载失败，使用备用名言:', error);
-                const fallbackQuotes = [
-                    "桃李不言，下自成蹊。",
-                    "路漫漫其修远兮，吾将上下而求索。",
-                    "千里之行，始于足下。",
-                    "学而不思则罔，思而不学则殆。",
-                    "知之为知之，不知为不知，是知也。",
-                    "三人行，必有我师焉。",
-                    "己所不欲，勿施于人。",
-                    "温故而知新，可以为师矣。",
-                    "逝者如斯夫，不舍昼夜。",
-                    "天行健，君子以自强不息。",
-                    "地势坤，君子以厚德载物。",
-                    "不积跬步，无以至千里。",
-                    "锲而不舍，金石可镂。",
-                    "宝剑锋从磨砺出，梅花香自苦寒来。",
-                    "书山有路勤为径，学海无涯苦作舟。"
-                ];
-                const randomIndex = Math.floor(Math.random() * fallbackQuotes.length);
-                modernUiQuote.textContent = `「 ${fallbackQuotes[randomIndex]} 」`;
             });
     }
 
@@ -1425,17 +1612,57 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    let quoteInterval = null;
+
     function initModernUi() {
         applyModernUiState();
+        
+        document.body.style.display = 'none';
+        
         updateModernUiTime();
         updateModernUiBg();
-        showRandomQuote();
         renderModernUiNav();
         updateModernUiEngineSelector();
 
+        const showEngineSwitch = SyncStorage.getItem('showEngineSwitch', '1');
+        if (modernUiEngineSelector) {
+            modernUiEngineSelector.classList.toggle('hidden', showEngineSwitch !== '1');
+        }
+
+        const showDate = SyncStorage.getItem('showDate', '1');
+        if (modernUiDate) {
+            modernUiDate.style.display = showDate === '1' ? '' : 'none';
+        }
+
+        const autoHideNav = SyncStorage.getItem('autoHideNav', '0');
+        if (modernUiNav) {
+            modernUiNav.classList.toggle('auto-hide', autoHideNav === '1');
+        }
+
+        if (modernUiQuote) {
+            if (showQuote === '1') {
+                modernUiQuote.style.display = '';
+                showRandomQuote();
+                if (quoteInterval) clearInterval(quoteInterval);
+                quoteInterval = setInterval(showRandomQuote, 60000);
+            } else {
+                modernUiQuote.style.display = 'none';
+                if (quoteInterval) clearInterval(quoteInterval);
+                quoteInterval = null;
+            }
+        }
+
         setInterval(updateModernUiTime, 1000);
 
-        setInterval(showRandomQuote, 60000);
+        document.body.style.display = '';
+    }
+    window.initModernUi = initModernUi;
+    let showQuote = SyncStorage.getItem('showQuote', '1');
+    if (showQuote === null) showQuote = '1';
+    if (!isModernUi) {
+        document.body.style.display = '';
+    } else {
+        initModernUi();
     }
 
     if (modernUiSwitch) {
@@ -1460,6 +1687,154 @@ document.addEventListener('DOMContentLoaded', function() {
     if (modernUiSearchBtn) {
         modernUiSearchBtn.addEventListener('click', modernUiSearch);
     }
+
+    const toggleShowQuote = document.getElementById('toggleShowQuote');
+    if (toggleShowQuote) {
+        toggleShowQuote.checked = showQuote === '1';
+        toggleShowQuote.addEventListener('change', function() {
+            showQuote = this.checked ? '1' : '0';
+            SyncStorage.setItem('showQuote', showQuote);
+            if (modernUiQuote) {
+                if (this.checked) {
+                    modernUiQuote.style.display = '';
+                    showRandomQuote();
+                    if (quoteInterval) clearInterval(quoteInterval);
+                    quoteInterval = setInterval(showRandomQuote, 60000);
+                } else {
+                    modernUiQuote.style.display = 'none';
+                    if (quoteInterval) clearInterval(quoteInterval);
+                    quoteInterval = null;
+                }
+            }
+        });
+    }
+
+    const toggleShowEngineSwitch = document.getElementById('toggleShowEngineSwitch');
+    if (toggleShowEngineSwitch) {
+        let showEngineSwitch = SyncStorage.getItem('showEngineSwitch', '1');
+        if (showEngineSwitch === null) showEngineSwitch = '1';
+        toggleShowEngineSwitch.checked = showEngineSwitch === '1';
+        const engineSelector = document.getElementById('modernUiEngineSelector');
+        if (engineSelector) engineSelector.classList.toggle('hidden', showEngineSwitch !== '1');
+        toggleShowEngineSwitch.addEventListener('change', function() {
+            SyncStorage.setItem('showEngineSwitch', this.checked ? '1' : '0');
+            if (engineSelector) engineSelector.classList.toggle('hidden', !this.checked);
+        });
+    }
+
+    const toggleShowDate = document.getElementById('toggleShowDate');
+    if (toggleShowDate) {
+        let showDate = SyncStorage.getItem('showDate', '1');
+        if (showDate === null) showDate = '1';
+        toggleShowDate.checked = showDate === '1';
+        const dateEl = document.getElementById('modernUiDate');
+        if (dateEl) dateEl.style.display = showDate === '1' ? '' : 'none';
+        toggleShowDate.addEventListener('change', function() {
+            SyncStorage.setItem('showDate', this.checked ? '1' : '0');
+            if (dateEl) dateEl.style.display = this.checked ? '' : 'none';
+        });
+    }
+
+    let autoHideTimeout = null;
+    const toggleAutoHideNav = document.getElementById('toggleAutoHideNav');
+    if (toggleAutoHideNav) {
+        let autoHideNav = SyncStorage.getItem('autoHideNav', '0');
+        if (autoHideNav === null) autoHideNav = '0';
+        toggleAutoHideNav.checked = autoHideNav === '1';
+        const navEl = document.getElementById('modernUiNav');
+        if (navEl) {
+            navEl.classList.toggle('auto-hide', autoHideNav === '1');
+            document.addEventListener('mousemove', function(e) {
+                if (!toggleAutoHideNav.checked) return;
+                const settingsModal = document.getElementById('settingsModal');
+                const linkModal = document.getElementById('linkModal');
+                const contextMenu = document.getElementById('customContextMenu');
+                if ((settingsModal && settingsModal.style.display === 'block') ||
+                    (linkModal && linkModal.style.display === 'block') ||
+                    (contextMenu && contextMenu.classList.contains('show'))) return;
+                const rect = navEl.getBoundingClientRect();
+                const nearBottom = e.clientY >= window.innerHeight - 20 &&
+                    e.clientX >= rect.left - 20 && e.clientX <= rect.right + 20;
+                const overNav = e.clientY >= rect.top && e.clientY <= rect.bottom &&
+                    e.clientX >= rect.left && e.clientX <= rect.right;
+                const scheduleHide = function() {
+                    autoHideTimeout = setTimeout(function() {
+                        const sm = document.getElementById('settingsModal');
+                        const lm = document.getElementById('linkModal');
+                        const cm = document.getElementById('customContextMenu');
+                        if ((sm && sm.style.display === 'block') ||
+                            (lm && lm.style.display === 'block') ||
+                            (cm && cm.classList.contains('show'))) {
+                            scheduleHide();
+                            return;
+                        }
+                        navEl.classList.add('auto-hide');
+                    }, 550);
+                };
+                if (nearBottom || overNav) {
+                    clearTimeout(autoHideTimeout);
+                    navEl.classList.remove('auto-hide');
+                    scheduleHide();
+                }
+            });
+        }
+        toggleAutoHideNav.addEventListener('change', function() {
+            SyncStorage.setItem('autoHideNav', this.checked ? '1' : '0');
+            if (navEl) {
+                navEl.classList.toggle('auto-hide', this.checked);
+                if (!this.checked) {
+                    clearTimeout(autoHideTimeout);
+                    navEl.classList.remove('auto-hide');
+                }
+            }
+        });
+    }
+
+    const toggleHideSettingsBtn = document.getElementById('toggleHideSettingsBtn');
+    if (toggleHideSettingsBtn) {
+        let hideSettingsBtn = SyncStorage.getItem('hideSettingsBtn', '0');
+        if (hideSettingsBtn === null) hideSettingsBtn = '0';
+        toggleHideSettingsBtn.checked = hideSettingsBtn === '1';
+        document.body.classList.toggle('hide-settings-btn', hideSettingsBtn === '1');
+        toggleHideSettingsBtn.addEventListener('change', function() {
+            SyncStorage.setItem('hideSettingsBtn', this.checked ? '1' : '0');
+            document.body.classList.toggle('hide-settings-btn', this.checked);
+        });
+    }
+
+    const navSectionExpand = document.getElementById('navSectionExpand');
+    const expandSection = document.querySelector('.settings-section[data-section="expand"]');
+    function updateExtensionUiVisibility() {
+        const enabled = enableExtensions === '1';
+        if (navSectionExpand) {
+            navSectionExpand.style.display = enabled ? '' : 'none';
+        }
+        if (expandSection) {
+            expandSection.dataset.extensionDisabled = enabled ? '' : '1';
+        }
+    }
+
+    const toggleEnableExtensions = document.getElementById('toggleEnableExtensions');
+    if (toggleEnableExtensions) {
+        toggleEnableExtensions.checked = enableExtensions === '1';
+        toggleEnableExtensions.addEventListener('change', function() {
+            enableExtensions = this.checked ? '1' : '0';
+            SyncStorage.setItem('enableExtensions', enableExtensions);
+            loadExtensions();
+            updateExtensionUiVisibility();
+            if (!this.checked) {
+                const sidebar = document.querySelector('.settings-sidebar');
+                if (sidebar) {
+                    const activeLi = sidebar.querySelector('li.active');
+                    if (activeLi && activeLi.getAttribute('data-section') === 'expand') {
+                        const generalLi = sidebar.querySelector('li[data-section="general"]');
+                        if (generalLi) generalLi.click();
+                    }
+                }
+            }
+        });
+    }
+    updateExtensionUiVisibility();
 
     const modernUiSettingsBtn = document.getElementById('modernUiSettingsBtn');
     if (modernUiSettingsBtn) {
@@ -1528,9 +1903,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const customContextMenu = document.getElementById('customContextMenu');
     if (customContextMenu) {
         let currentNavIndex = -1;
+        let contextMenuTarget = null;
 
         document.addEventListener('contextmenu', function(e) {
             e.preventDefault();
+            contextMenuTarget = document.activeElement;
             
             let x = e.clientX;
             let y = e.clientY;
@@ -1584,56 +1961,60 @@ document.addEventListener('DOMContentLoaded', function() {
             
             customContextMenu.style.left = x + 'px';
             customContextMenu.style.top = y + 'px';
-            
-            bindContextMenuEvents();
         });
 
-        function bindContextMenuEvents() {
-            customContextMenu.querySelectorAll('.context-menu-item').forEach(item => {
-                item.addEventListener('click', function() {
-                    const action = this.dataset.action;
-                    
-                    switch(action) {
-                        case 'refresh':
-                            location.reload();
-                            break;
-                        case 'cut':
-                            document.execCommand('cut');
-                            break;
-                        case 'copy':
-                            document.execCommand('copy');
-                            break;
-                        case 'paste':
-                            navigator.clipboard.readText().then(text => {
-                                const activeElement = document.activeElement;
-                                if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
-                                    const start = activeElement.selectionStart;
-                                    const end = activeElement.selectionEnd;
-                                    const value = activeElement.value;
-                                    activeElement.value = value.substring(0, start) + text + value.substring(end);
-                                    activeElement.selectionStart = activeElement.selectionEnd = start + text.length;
-                                    activeElement.dispatchEvent(new Event('input', { bubbles: true }));
-                                }
-                            }).catch(err => {
-                                console.log('粘贴失败:', err);
-                            });
-                            break;
-                        case 'edit':
-                            if (currentNavIndex >= 0) {
-                                openEditModal(currentNavIndex);
+        customContextMenu.addEventListener('click', function(e) {
+            const item = e.target.closest('.context-menu-item');
+            if (!item) return;
+            e.stopPropagation();
+            const action = item.dataset.action;
+            
+            switch(action) {
+                case 'refresh':
+                    location.reload();
+                    break;
+                case 'cut':
+                    document.execCommand('cut');
+                    break;
+                case 'copy':
+                    document.execCommand('copy');
+                    break;
+                case 'paste':
+                    navigator.clipboard.readText().then(text => {
+                        const target = contextMenuTarget;
+                        if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
+                            target.focus();
+                            const start = target.selectionStart || 0;
+                            const end = target.selectionEnd || 0;
+                            target.value = target.value.substring(0, start) + text + target.value.substring(end);
+                            target.selectionStart = target.selectionEnd = start + text.length;
+                            target.dispatchEvent(new Event('input', { bubbles: true }));
+                        } else {
+                            const searchInput = document.getElementById('searchInput');
+                            if (searchInput) {
+                                searchInput.value = text;
+                                searchInput.focus();
+                                searchInput.dispatchEvent(new Event('input', { bubbles: true }));
                             }
-                            break;
-                        case 'delete':
-                            if (currentNavIndex >= 0) {
-                                removeLink(currentNavIndex);
-                            }
-                            break;
+                        }
+                    }).catch(err => {
+                        showToast('粘贴失败: ' + err.message);
+                    });
+                    break;
+                case 'edit':
+                    if (currentNavIndex >= 0) {
+                        openEditModal(currentNavIndex);
                     }
-                    
-                    customContextMenu.classList.remove('show');
-                });
-            });
-        }
+                    break;
+                case 'delete':
+                    if (currentNavIndex >= 0) {
+                        removeLink(currentNavIndex);
+                    }
+                    break;
+            }
+            
+            customContextMenu.classList.remove('show');
+        });
 
         document.addEventListener('click', function() {
             customContextMenu.classList.remove('show');

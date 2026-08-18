@@ -139,7 +139,8 @@
                 'customLinks', 'searchHistory', 'searchEngine', 
                 'selectedTheme', 'customBackground', 'customEngines',
                 'showTimeOnHome', 'showQuickNav', 'expandDir', 
-                'extensions', 'devOption', 'modernUiEnabled'
+                'extensions', 'devOption', 'modernUiEnabled', 'showQuote',
+                'showEngineSwitch', 'showDate', 'autoHideNav', 'hideSettingsBtn', 'enableExtensions'
             ];
 
             var defaults = {
@@ -154,7 +155,13 @@
                 expandDir: 'Expand',
                 extensions: [],
                 devOption: '0',
-                modernUiEnabled: false
+                modernUiEnabled: false,
+                showQuote: '1',
+                showEngineSwitch: '1',
+                showDate: '1',
+                autoHideNav: '0',
+                hideSettingsBtn: '0',
+                enableExtensions: '1'
             };
 
             if (isExtensionEnvironment()) {

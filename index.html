@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <!--
-    欢迎使用极简首页! 已开源:https://github.com/itnproject/Minimalist-Homepage
-    11.3(正式版)更新:重大更新，推荐更新！
+    欢迎使用极简首页! 已开源:https://github.com/itnproject/Minimalist-Homepage-BE
+    11.3 Pro(正式版)更新:重大更新，推荐更新！
         对于现代UI：
         - 增加线性动画
         - 统一R角
@@ -18,6 +18,18 @@
         - 优化流畅度
         对于整体：
         - 修复bug
+        对于Pro特有：
+        - 修复主题记忆问题
+        - 修复按钮问题
+        - 增加名言名句隐藏
+        - 增加引擎快切隐藏
+        - 更新设置界面
+        - 修复右键粘贴无法
+        - 修复部分细节bug
+        - 加入年月日周隐藏
+        - 加入快捷栏自隐藏
+        - 加入设置按钮不可见（实验性）
+        - 改造扩展架构
     然后喝了冰红茶，我去了某零食太辣了！
 -->
 <head>
@@ -30,7 +42,7 @@
     <script src="Minimalist.js"></script>
     <title>极简首页</title>   
 </head>
-<body>
+<body style="display:none;">
 <div class="main-container">
     <div class="card">
         <h1>极简首页</h1>
@@ -93,7 +105,7 @@
     </div>
     <div class="modern-ui-nav" id="modernUiNav">
     </div>
-    <button class="modern-ui-settings-btn" id="modernUiSettingsBtn" title="设置">
+    <button class="modern-ui-settings-btn" id="modernUiSettingsBtn" title="选择极简首页就对了">
         <i class="fas fa-cog"></i>
     </button>
 </div>
@@ -151,11 +163,11 @@
             <ul>
                 <li data-section="cgsz">常规设置</li>
                 <!---<li data-section="appearance">主题设置</li>--->
-                <li class="active" data-section="general">背景设置</li>
+                <li class="active" data-section="general">综合设置</li>
                 <li data-section="engine">搜索引擎</li>
                 <!---<li data-section="nav">快捷导航</li>--->
                 <!---<li data-section="qtapp">其他项目</li>--->
-                <li data-section="expand">管理扩展</li>
+                <li id="navSectionExpand" data-section="expand">管理扩展</li>
                 <li data-section="sygxing">首页更新</li>
                 <li data-section="about">关于首页</li>
                 <li data-section="kfzxx">开发者选项</li><!---彩蛋--->
@@ -163,10 +175,21 @@
         </div>
         <div class="settings-main">
             <div class="modal-header settings-header-fixed">
-                <h3 class="modal-title" id="settingsMainTitle">界面设置</h3>
+                <h3 class="modal-title" id="settingsMainTitle">综合设置</h3>
                 <span class="close">&times;</span>
             </div>
             <div class="modal-body settings-section" data-section="general">
+                <div class="form-group" style="font-weight:bold;margin-bottom:6px;">界面</div>
+                <div class="theme-demo-group">
+                    <div style="display:flex;flex-direction:column;align-items:center;">
+                        <img src="image/ClassicUI.png" alt="经典UI" class="theme-option" data-theme="classic">
+                        <div class="theme-demo-label">经典UI</div>
+                    </div>
+                    <div style="display:flex;flex-direction:column;align-items:center;">
+                        <img src="image/ModernUI.png" alt="现代UI" class="theme-option" data-theme="modern">
+                        <div class="theme-demo-label">现代UI</div>
+                    </div>
+                </div>
                 <div class="form-group">
                     <label>自定义背景(URL或颜色代码)</label>
                     <input type="text" id="customBgInput" placeholder="#f5f7fa 或 https://example.com/•••.png">
@@ -201,45 +224,6 @@
                 </div>
             </div>
             <div class="modal-body settings-section" data-section="cgsz" style="display:none">
-
-                <div class="form-group" style="font-weight:bold;margin-bottom:6px;">界面</div>
-                                <div class="theme-demo-group">
-                                    <div style="display:flex;flex-direction:column;align-items:center;">
-                                        <img src="image/ClassicUI.png" alt="经典UI" class="theme-option" data-theme="classic">
-                                        <div class="theme-demo-label">经典UI</div>
-                                    </div>
-                                    <div style="display:flex;flex-direction:column;align-items:center;">
-                                        <img src="image/ModernUI.png" alt="现代UI" class="theme-option" data-theme="modern">
-                                        <div class="theme-demo-label">现代UI</div>
-                                    </div>
-                                </div><style>
-                                    .theme-demo-group {
-                                        display: flex;
-                                        gap: 32px;
-                                        justify-content: center;
-                                        margin: 16px 0 8px 0;}.theme-demo-group img.theme-option {
-                                        width: 150px;
-                                        height: 106px;
-                                        border-radius: 8px;
-                                        border: 2px solid #7c7c7c;
-                                        cursor: pointer;
-                                        transition: border-color 0.2s;
-                                        user-select: none;
-                                        -webkit-user-drag: none;
-                                    }.theme-demo-group img.theme-option.selected {border-color: #6C8DFA;}.theme-demo-label {
-                                        margin-top: 8px;
-                                        font-size: 15px;
-                                        color: #4a5a7a;
-                                        text-align: center;}body.dark-mode .theme-demo-label {color: #e0e0e0;}</style>
-                <div class="form-group modern-ui-hide" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-                    <label for="toggleShowTime" style="margin:0;">首页显示时间</label>
-                    <input type="checkbox" id="toggleShowTime" checked style="width:20px;height:20px;">
-                </div>
-                <div class="form-group modern-ui-hide" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-                    <label for="toggleShowQuickNav" style="margin:0;">显示快捷导航</label>
-                    <input type="checkbox" id="toggleShowQuickNav" checked style="width:20px;height:20px;">
-                </div>
-
                 <div class="form-group" style="font-weight:bold;margin-bottom:6px;">主题</div>
                                 <div class="theme-demo-group">
                                     <div style="display:flex;flex-direction:column;align-items:center;">
@@ -251,6 +235,46 @@
                                         <div class="theme-demo-label">深色</div>
                                     </div>
                                 </div><style>
+                                    .toggle-switch {
+                                        position: relative;
+                                        display: inline-block;
+                                        width: 48px;
+                                        height: 26px;
+                                        cursor: pointer;
+                                    }
+                                    .toggle-switch input {
+                                        opacity: 0;
+                                        width: 0;
+                                        height: 0;
+                                    }
+                                    .toggle-slider {
+                                        position: absolute;
+                                        cursor: pointer;
+                                        top: 0;
+                                        left: 0;
+                                        right: 0;
+                                        bottom: 0;
+                                        background: #555;
+                                        transition: background 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+                                        border-radius: 13px;
+                                    }
+                                    .toggle-slider:before {
+                                        position: absolute;
+                                        content: "";
+                                        height: 20px;
+                                        width: 20px;
+                                        left: 3px;
+                                        bottom: 3px;
+                                        background: #fff;
+                                        transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+                                        border-radius: 50%;
+                                    }
+                                    .toggle-switch input:checked + .toggle-slider {
+                                        background: #4caf50;
+                                    }
+                                    .toggle-switch input:checked + .toggle-slider:before {
+                                        transform: translateX(22px);
+                                    }
                                     .theme-demo-group {
                                         display: flex;
                                         gap: 32px;
@@ -269,6 +293,49 @@
                                         font-size: 15px;
                                         color: #4a5a7a;
                                         text-align: center;}body.dark-mode .theme-demo-label {color: #e0e0e0;}</style>
+            <div class="form-group" style="font-weight:bold;margin-bottom:6px;">界面</div>
+                <div class="form-group modern-ui-hide" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                    <label for="toggleShowTime" style="margin:0;">首页显示时间</label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="toggleShowTime" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="form-group modern-ui-hide" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                    <label for="toggleShowQuickNav" style="margin:0;">显示快捷导航</label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="toggleShowQuickNav" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="form-group classic-ui-hide" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                    <label for="toggleShowDate" style="margin:0;">显示年月日周</label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="toggleShowDate" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="form-group classic-ui-hide" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                    <label for="toggleShowEngineSwitch" style="margin:0;">显示引擎快切</label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="toggleShowEngineSwitch" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="form-group classic-ui-hide" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                    <label for="toggleShowQuote" style="margin:0;">显示名言名句</label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="toggleShowQuote" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="form-group classic-ui-hide" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                    <label for="toggleAutoHideNav" style="margin:0;">快捷栏自隐藏</label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="toggleAutoHideNav">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
             </div>
             <div class="modal-body settings-section" data-section="appearance" style="display:none">
                 <l1abel>制作中...</l1abel><br>
@@ -280,41 +347,49 @@
                 <br><label>一款好用且美丽的番茄钟</label>
             </div>
             <div class="modal-body settings-section" data-section="sygxing" style="display:none; ">
-                <b id="currentVersionLabel">当前版本: </b><l1abel>11.3(正式版)</l1abel>
+                <b id="currentVersionLabel">当前版本: </b><l1abel>11.3 Pro(正式版)</l1abel>
                 <div id="updateInfo" style="margin-top:10px;"></div>
                 <button id="checkUpdateBtn" class="btn btn-primary" style="margin-top:10px;">检查更新</button>
                 <button id="downloadUpdateBtn" class="btn btn-secondary" style="margin-top:10px;display:none;">立即更新</button>
             </div>
             <div class="modal-body settings-section" data-section="expand" style="display:none;">
                 <div class="form-group">
-                    <label style="font-weight:bold;margin-bottom:10px;display:block;">已安装扩展</label>
-                    <div id="extensionList" style="margin-bottom:20px;"></div>
-                    <button id="refreshExtensionsBtn" class="btn btn-secondary">刷新扩展</button>
-                </div>
-                <div class="form-group">
-                    <label style="font-weight:bold;margin-bottom:10px;display:block;">安装新扩展</label>
-                    <!--<div style="margin-bottom:10px;">
-                        <label style="font-weight:bold;">自动安装：</label>
-                        <p style="font-size:14px;color:#666;margin:5px 0;">选择包含扩展子文件夹的目录，系统会自动检测并安装所有有效扩展。</p>
-                        <input type="file" id="autoInstallInput" webkitdirectory multiple style="margin-bottom:5px;">
-                        <button id="autoInstallBtn" class="btn btn-primary">自动安装</button>
-                    </div>-->
-                    <div>
-                        <label style="font-weight:bold;">手动安装：</label>
-                        <p style="font-size:14px;color:#666;margin:5px 0;">选择一个扩展文件夹，必须包含 .itnproject、.itnprojectcss 和 .itnprojectjs 文件。</p>
-                        <input type="file" id="manualInstallInput" webkitdirectory style="margin-bottom:5px;">
-                        <button id="manualInstallBtn" class="btn btn-primary">手动安装</button>
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                        <span style="font-weight:bold;font-size:15px;">已安装扩展</span>
+                        <button id="refreshExtensionsBtn" class="btn btn-secondary" style="padding:5px 12px;font-size:13px;">刷新</button>
                     </div>
+                    <div id="extensionList" style="margin-bottom:16px;"></div>
+                </div>
+                <div class="form-group extension-install-section">
+                    <span class="extension-install-header">安装新扩展</span>
+                    <p class="extension-install-desc">选择一个扩展，需包含.itnproject、.itnprojectcss和.itnprojectjs文件。</p>
+                    <input type="file" id="manualInstallInput" webkitdirectory hidden>
+                    <button id="manualInstallBtn" class="btn btn-primary" style="font-size:13px;">安装</button>
                 </div>
             </div>
             <div class="modal-body settings-section" data-section="kfzxx" style="display:none;">
-                <div class="form-group" style="text-align:center;color:rgba(0,0,0,0.5);padding:40px 0;">
-                    <label>没有权限使用开发者选项</label>
+                <div class="form-group" style="margin-bottom:8px;"> <div class="form-group" style="font-weight:bold;margin-bottom:6px;">界面</div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;">
+                        <label for="toggleHideSettingsBtn" style="margin:0;line-height:26px;">隐藏设置按钮 [实验性]</label>
+                        <label class="toggle-switch" style="margin-top:6px;">
+                            <input type="checkbox" id="toggleHideSettingsBtn">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div style="font-size:12px;color:#999;line-height:1.2;margin-top:-2px;">将设置按钮设为不可见，但点击其位置仍可打开。</div>
+                    <br><div class="form-group" style="font-weight:bold;margin-bottom:6px;">功能</div>
+                    <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                        <label for="toggleEnableExtensions" style="margin:0;line-height:26px;">使用扩展功能 [建议开]</label>
+                        <label class="toggle-switch" style="margin-top:3px;">
+                            <input type="checkbox" id="toggleEnableExtensions">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
                 </div>
             </div>
             <div class="modal-body settings-section" data-section="about" style="display:none; text-align: center;">
-                <img src="image/tubiao.png" alt="极简首页" class="极简首页logo" width="90" height="90">
-                <br><label>极简首页</label><br><label>11.3</label><br><br>
+                <br><img src="image/tubiao.png" alt="极简首页" class="极简首页logo" width="90" height="90">
+                <br><label>极简首页</label><br><label>11.3 Pro</label><br><br>
                 <label>由itnproject制作</label>
                 <br><label>使用AGPL3.0在github开源</label>
                 <br><label>修改代码后请使用AGPL3.0在Github开源</label><br><br>
