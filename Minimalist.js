@@ -186,6 +186,118 @@ const _extApi = (function() {
         },
         getSearchHistory: function() {
             return searchHistory;
+        },
+        translate: function(translations) {
+            if (!translations || typeof translations !== 'object') return;
+            var observer = null;
+            var titleObserver = null;
+            var modalTitleObserver = null;
+            var processed = new WeakSet();
+            var originalTexts = new Map();
+            var originalPlaceholders = new Map();
+            var originalTitles = new Map();
+            
+            function translateText(text) {
+                return translations[text] || text;
+            }
+            
+            function walk(root) {
+                var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
+                var node;
+                var sortedKeys = Object.keys(translations).sort(function(a, b) { return b.length - a.length; });
+                while (node = walker.nextNode()) {
+                    if (processed.has(node)) continue;
+                    var text = node.textContent.trim();
+                    if (text && translations[text]) {
+                        if (!originalTexts.has(node)) {
+                            originalTexts.set(node, node.textContent);
+                        }
+                        node.textContent = node.textContent.replace(text, translations[text]);
+                        processed.add(node);
+                    } else {
+                        for (var i = 0; i < sortedKeys.length; i++) {
+                            var key = sortedKeys[i];
+                            if (text.indexOf(key) !== -1) {
+                                if (!originalTexts.has(node)) {
+                                    originalTexts.set(node, node.textContent);
+                                }
+                                node.textContent = node.textContent.replace(key, translations[key]);
+                                processed.add(node);
+                                break;
+                            }
+                        }
+                    }
+                }
+                var elements = root.querySelectorAll('input[placeholder], textarea[placeholder]');
+                elements.forEach(function(el) {
+                    var ph = el.getAttribute('placeholder');
+                    if (ph && translations[ph]) {
+                        if (!originalPlaceholders.has(el)) {
+                            originalPlaceholders.set(el, ph);
+                        }
+                        el.setAttribute('placeholder', translations[ph]);
+                    }
+                });
+            }
+            
+            var settingsMainTitle = document.getElementById('settingsMainTitle');
+            if (settingsMainTitle) {
+                titleObserver = new MutationObserver(function() {
+                    var text = settingsMainTitle.textContent.trim();
+                    if (translations[text]) {
+                        if (!originalTitles.has(settingsMainTitle)) {
+                            originalTitles.set(settingsMainTitle, settingsMainTitle.textContent);
+                        }
+                        settingsMainTitle.textContent = translations[text];
+                    }
+                });
+                titleObserver.observe(settingsMainTitle, { childList: true, characterData: true, subtree: true });
+            }
+            
+            var modalTitleEl = document.getElementById('modalTitle');
+            if (modalTitleEl) {
+                modalTitleObserver = new MutationObserver(function() {
+                    var text = modalTitleEl.textContent.trim();
+                    if (translations[text]) {
+                        if (!originalTitles.has(modalTitleEl)) {
+                            originalTitles.set(modalTitleEl, modalTitleEl.textContent);
+                        }
+                        modalTitleEl.textContent = translations[text];
+                    }
+                });
+                modalTitleObserver.observe(modalTitleEl, { childList: true, characterData: true, subtree: true });
+            }
+            
+            walk(document.body);
+            observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(m) {
+                    m.addedNodes.forEach(function(n) {
+                        if (n.nodeType === Node.ELEMENT_NODE) walk(n);
+                    });
+                });
+            });
+            observer.observe(document.body, { childList: true, subtree: true });
+            
+            return function() {
+                if (observer) observer.disconnect();
+                if (titleObserver) titleObserver.disconnect();
+                if (modalTitleObserver) modalTitleObserver.disconnect();
+                originalTexts.forEach(function(original, node) {
+                    if (node.parentNode) {
+                        node.textContent = original;
+                    }
+                });
+                originalPlaceholders.forEach(function(original, el) {
+                    el.setAttribute('placeholder', original);
+                });
+                originalTitles.forEach(function(original, el) {
+                    el.textContent = original;
+                });
+                originalTexts.clear();
+                originalPlaceholders.clear();
+                originalTitles.clear();
+                processed = new WeakSet();
+            };
         }
     };
     Object.freeze(api);
@@ -387,7 +499,7 @@ document.addEventListener('DOMContentLoaded', function() {
     else setDevOptionVisible(true);
     var aboutSection = document.querySelector('.modal-body.settings-section[data-section="about"]');
     if (aboutSection) {
-        var versionLabel = Array.from(aboutSection.querySelectorAll('label')).find(lab => /\d+\.\d+\.\d+/.test(lab.textContent) || /^\d+\.\d+$/.test(lab.textContent));
+        var versionLabel = Array.from(aboutSection.querySelectorAll('label')).find(lab => /\d+\.\d+/.test(lab.textContent));
         if (versionLabel) {
             let clickCount = 0;
             versionLabel.addEventListener('click', function() {
@@ -1062,11 +1174,21 @@ applyCustomBackground(customBackground);
 });
 
 function unloadAllExtensions() {
+    console.log('unloadAllExtensions called, window._extCleanup:', !!window._extCleanup);
     loadedExtensions.forEach(ext => {
         if (ext.element && ext.element.parentNode) {
             ext.element.parentNode.removeChild(ext.element);
         }
+        if (ext.cleanup && typeof ext.cleanup === 'function') {
+            ext.cleanup();
+        }
     });
+    if (window._extCleanup && typeof window._extCleanup === 'function') {
+        console.log('Calling window._extCleanup');
+        window._extCleanup();
+        window._extCleanup = null;
+    }
+    window._activeTranslation = null;
     document.querySelectorAll('[data-ext-id]').forEach(el => {
         if (el.parentNode) el.parentNode.removeChild(el);
     });
@@ -1076,6 +1198,9 @@ function unloadAllExtensions() {
 function loadExtensions() {
     unloadAllExtensions();
     if (enableExtensions !== '1') return;
+    const currentModernUi = SyncStorage.getItem('modernUiEnabled', true);
+    if (!currentModernUi) return;
+    if (extensions.length === 0) return;
 
     extensions.forEach(ext => {
         if (!ext.enabled) return;
@@ -1100,11 +1225,46 @@ function loadExtension(ext) {
             if (type === 'js') {
                 try {
                     const api = _extApi || {};
-                    const wrapped = '(function(' + Object.keys(api).join(',') + '){' + content + '\n})';
-                    eval(wrapped).apply(null, Object.keys(api).map(k => api[k]));
-                    loadedExtensions.push({ ...ext, loaded: true, file: fileName });
+                    const apiCode = Object.keys(api).map(k => {
+                        if (typeof api[k] === 'function') {
+                            return 'var ' + k + ' = ' + api[k].toString() + ';';
+                        }
+                        return 'var ' + k + ' = ' + JSON.stringify(api[k]) + ';';
+                    }).join('\n');
+                    const fullCode = apiCode + '\n' + content;
+                    
+                    const iframe = document.createElement('iframe');
+                    iframe.sandbox = 'allow-scripts allow-same-origin allow-modals';
+                    iframe.style.display = 'none';
+                    iframe.src = chrome.runtime.getURL('sandbox.html') + '?t=' + Date.now() + '&' + ext.id;
+                    document.body.appendChild(iframe);
+                    
+                    const handler = function(e) {
+                        if (e.data && e.data.id === ext.id && e.data.type === 'extDone') {
+                            window.removeEventListener('message', handler);
+                            setTimeout(function() { iframe.remove(); }, 100);
+                            console.log('Extension JS executed:', ext.name, fileName);
+                            loadedExtensions.push({ ...ext, loaded: true, file: fileName });
+                        } else if (e.data && e.data.id === ext.id && e.data.type === 'extError') {
+                            window.removeEventListener('message', handler);
+                            setTimeout(function() { iframe.remove(); }, 100);
+                            showToast('扩展执行错误: ' + ext.name + ' - ' + e.data.error);
+                        }
+                    };
+                    window.addEventListener('message', handler);
+                    
+                    iframe.onload = function() {
+                        setTimeout(function() {
+                            iframe.contentWindow.postMessage({
+                                action: 'execCode',
+                                code: fullCode,
+                                id: ext.id
+                            }, '*');
+                        }, 10);
+                    };
                 } catch (e) {
                     console.error('Error loading JS extension:', ext.name, fileName, e);
+                    showToast('扩展执行错误: ' + ext.name + ' - ' + e.message);
                 }
             } else if (type === 'css') {
                 const style = document.createElement('style');
@@ -1331,6 +1491,26 @@ function installExtension(folderName, extFiles) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+    window.addEventListener('message', function(e) {
+        if (e.data && e.data.type === 'extTranslate' && e.data.translations) {
+            window._activeTranslation = e.data.extName || 'Unknown';
+            if (typeof _extApi.translate === 'function') {
+                const cleanup = _extApi.translate(e.data.translations);
+                console.log('loadedExtensions:', loadedExtensions);
+                console.log('extName:', e.data.extName);
+                const extRecord = loadedExtensions.find(ext => ext.name === e.data.extName);
+                console.log('extRecord:', extRecord);
+                if (extRecord) {
+                    extRecord.cleanup = cleanup;
+                    console.log('cleanup saved');
+                } else {
+                    console.warn('extRecord not found, using global cleanup');
+                    window._extCleanup = cleanup;
+                }
+            }
+        }
+    });
+    
     const expandDirInput = document.getElementById('expandDirInput');
     if (expandDirInput) {
         expandDirInput.value = expandDir;
@@ -1351,8 +1531,10 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     }
 
-    loadExtensions();
-    renderExtensionList();
+    setTimeout(() => {
+        loadExtensions();
+        renderExtensionList();
+    }, 10);
 
     const refreshBtn = document.getElementById('refreshExtensionsBtn');
     if (refreshBtn) {
@@ -1446,7 +1628,8 @@ document.addEventListener('DOMContentLoaded', function() {
         modernUiTime.textContent = `${hours}:${minutes}`;
 
         const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
-        modernUiDate.textContent = now.toLocaleDateString('zh-CN', options);
+        const dateLocale = window._activeTranslation === 'English' ? 'en-US' : 'zh-CN';
+        modernUiDate.textContent = now.toLocaleDateString(dateLocale, options);
     }
 
     function updateModernUiBg() {
@@ -1494,16 +1677,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const randomIndex = Math.floor(Math.random() * fallbackQuotes.length);
         modernUiQuote.textContent = `「 ${fallbackQuotes[randomIndex]} 」`;
         
-        fetch('https://v2.jinrishici.com/one.json')
-            .then(response => response.json())
-            .then(data => {
-                if (data.data && data.data.content) {
-                    const content = data.data.content;
-                    modernUiQuote.textContent = `「 ${content} 」`;
-                }
-            })
-            .catch(error => {
-            });
+        chrome.runtime.sendMessage({ action: 'fetchQuote' }, (response) => {
+            if (response && response.success && response.data && response.data.content) {
+                modernUiQuote.textContent = `「 ${response.data.content} 」`;
+            }
+        });
     }
 
     function renderModernUiNav() {
@@ -1617,8 +1795,6 @@ document.addEventListener('DOMContentLoaded', function() {
     function initModernUi() {
         applyModernUiState();
         
-        document.body.style.display = 'none';
-        
         updateModernUiTime();
         updateModernUiBg();
         renderModernUiNav();
@@ -1653,14 +1829,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         setInterval(updateModernUiTime, 1000);
-
-        document.body.style.display = '';
     }
     window.initModernUi = initModernUi;
     let showQuote = SyncStorage.getItem('showQuote', '1');
     if (showQuote === null) showQuote = '1';
     if (!isModernUi) {
-        document.body.style.display = '';
     } else {
         initModernUi();
     }

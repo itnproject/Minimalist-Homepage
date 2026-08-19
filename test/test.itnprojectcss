@@ -1,0 +1,10 @@
+.sakura-petal {
+    position: fixed;
+    pointer-events: none;
+    z-index: 10000;
+    animation: sakura-fall linear forwards;
+}
+@keyframes sakura-fall {
+    0%   { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(110vh) rotate(360deg); opacity: 0; }
+}

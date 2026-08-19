@@ -1,0 +1,15 @@
+(function() {
+    function spawnPetal() {
+        const petal = document.createElement('div');
+        petal.className = 'sakura-petal';
+        petal.textContent = '🌸';
+        petal.style.left = Math.random() * 100 + '%';
+        petal.style.fontSize = (12 + Math.random() * 20) + 'px';
+        petal.style.animationDuration = (3 + Math.random() * 5) + 's';
+        document.body.appendChild(petal);
+        setTimeout(function() { petal.remove(); }, 8000);
+    }
+
+    setInterval(spawnPetal, 300);
+    showToast('已启用粉色樱花飘落效果主题');
+})();

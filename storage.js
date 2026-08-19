@@ -155,7 +155,7 @@
                 expandDir: 'Expand',
                 extensions: [],
                 devOption: '0',
-                modernUiEnabled: false,
+                modernUiEnabled: true,
                 showQuote: '1',
                 showEngineSwitch: '1',
                 showDate: '1',
@@ -168,6 +168,7 @@
                 chrome.storage.local.get(keys, function(result) {
                     keys.forEach(function(key) {
                         cache[key] = result[key] !== undefined ? result[key] : defaults[key];
+                        try { localStorage.setItem(key, JSON.stringify(cache[key])); } catch(e) {}
                     });
                     initialized = true;
                     initCallbacks.forEach(function(cb) { cb(); });
@@ -201,32 +202,31 @@
             },
             getItem: function(key, defaultValue) {
                 var value = cache[key];
+                if (value === undefined) {
+                    try {
+                        var local = localStorage.getItem(key);
+                        if (local !== null) {
+                            value = JSON.parse(local);
+                            cache[key] = value;
+                        }
+                    } catch(e) {}
+                }
                 return value !== undefined ? value : defaultValue;
             },
             setItem: function(key, value) {
                 cache[key] = value;
+                try { localStorage.setItem(key, JSON.stringify(value)); } catch(e) {}
                 if (isExtensionEnvironment()) {
                     var obj = {};
                     obj[key] = value;
                     chrome.storage.local.set(obj);
-                } else {
-                    try {
-                        localStorage.setItem(key, JSON.stringify(value));
-                    } catch (e) {
-                        console.error('SyncStorage setItem error:', e);
-                    }
                 }
             },
             removeItem: function(key) {
                 delete cache[key];
+                try { localStorage.removeItem(key); } catch(e) {}
                 if (isExtensionEnvironment()) {
                     chrome.storage.local.remove(key);
-                } else {
-                    try {
-                        localStorage.removeItem(key);
-                    } catch (e) {
-                        console.error('SyncStorage removeItem error:', e);
-                    }
                 }
             },
             getCache: function() {

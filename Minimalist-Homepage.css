@@ -839,17 +839,17 @@ style>
             box-shadow: 0 3px 16px 0 rgba(0,0,0,0.32), 0 1.5px 6px 0 rgba(0,0,0,0.18);
         }
 
+        .dark-mode .modal-header {
+            border-bottom-color: #2d2d3a;
+        }
+
         .modal-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 18px;
             border-bottom: 1px solid #e0e3e7;
-            padding-bottom: 10px;
-            position: sticky;
-            top: 0;
-            background: inherit;
-            z-index: 10;
+            padding-bottom: 12px;
         }
 
         .modal-title {
@@ -1210,15 +1210,19 @@ body {
 overflow-y: hidden;
 }
 
-body.modern-ui {
+body.modern-ui, html.modern-ui body {
     overflow: hidden;
 }
 
-body.modern-ui .main-container {
+body.modern-ui .main-container, html.modern-ui body .main-container {
     display: none !important;
 }
 
-body.modern-ui footer {
+body.modern-ui footer, html.modern-ui body footer {
+    display: none !important;
+}
+
+body.modern-ui .settings-toggle, html.modern-ui body .settings-toggle {
     display: none !important;
 }
 
@@ -1235,7 +1239,7 @@ body.modern-ui footer {
     z-index: 1;
 }
 
-body.modern-ui .modern-ui-container {
+body.modern-ui .modern-ui-container, html.modern-ui body .modern-ui-container {
     display: flex;
 }
 

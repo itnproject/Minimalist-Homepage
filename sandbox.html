@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Extension Sandbox</title>
+</head>
+<body>
+<script>
+    window.addEventListener('message', function(e) {
+        if (e.data && e.data.action === 'execCode') {
+            try {
+                eval(e.data.code);
+                parent.postMessage({ type: 'extDone', id: e.data.id }, '*');
+            } catch (err) {
+                parent.postMessage({ type: 'extError', id: e.data.id, error: err.message }, '*');
+            }
+        }
+    });
+</script>
+</body>
+</html>
