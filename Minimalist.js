@@ -100,7 +100,7 @@ const _extApi = (function() {
         },
         addElement: function(html) {
             const div = document.createElement('div');
-            div.innerHTML = html;
+            div.appendChild(parseHtmlToFragment(html));
             document.body.appendChild(div);
             return div;
         },
@@ -188,7 +188,7 @@ const _extApi = (function() {
             return searchHistory;
         },
         translate: function(translations) {
-            if (!translations || typeof translations !== 'object') return;
+            if (!translations || typeof translations !== 'object') return function() {};
             var observer = null;
             var titleObserver = null;
             var modalTitleObserver = null;
@@ -196,12 +196,13 @@ const _extApi = (function() {
             var originalTexts = new Map();
             var originalPlaceholders = new Map();
             var originalTitles = new Map();
-            
+
             function translateText(text) {
                 return translations[text] || text;
             }
-            
+
             function walk(root) {
+                if (!root) return;
                 var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
                 var node;
                 var sortedKeys = Object.keys(translations).sort(function(a, b) { return b.length - a.length; });
@@ -239,7 +240,7 @@ const _extApi = (function() {
                     }
                 });
             }
-            
+
             var settingsMainTitle = document.getElementById('settingsMainTitle');
             if (settingsMainTitle) {
                 titleObserver = new MutationObserver(function() {
@@ -253,7 +254,7 @@ const _extApi = (function() {
                 });
                 titleObserver.observe(settingsMainTitle, { childList: true, characterData: true, subtree: true });
             }
-            
+
             var modalTitleEl = document.getElementById('modalTitle');
             if (modalTitleEl) {
                 modalTitleObserver = new MutationObserver(function() {
@@ -267,7 +268,7 @@ const _extApi = (function() {
                 });
                 modalTitleObserver.observe(modalTitleEl, { childList: true, characterData: true, subtree: true });
             }
-            
+
             walk(document.body);
             observer = new MutationObserver(function(mutations) {
                 mutations.forEach(function(m) {
@@ -277,15 +278,13 @@ const _extApi = (function() {
                 });
             });
             observer.observe(document.body, { childList: true, subtree: true });
-            
+
             return function() {
                 if (observer) observer.disconnect();
                 if (titleObserver) titleObserver.disconnect();
                 if (modalTitleObserver) modalTitleObserver.disconnect();
                 originalTexts.forEach(function(original, node) {
-                    if (node.parentNode) {
-                        node.textContent = original;
-                    }
+                    if (node.parentNode) node.textContent = original;
                 });
                 originalPlaceholders.forEach(function(original, el) {
                     el.setAttribute('placeholder', original);
@@ -418,7 +417,14 @@ document.addEventListener('DOMContentLoaded', function() {
         list.forEach((item, idx) => {
             const div = document.createElement('div');
             div.className = 'custom-engine-item';
-            div.innerHTML = `<span class="custom-engine-name">${item.name}</span><span class="custom-engine-url">${item.url}</span>`;
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'custom-engine-name';
+            nameSpan.textContent = item.name == null ? '' : item.name;
+            const urlSpan = document.createElement('span');
+            urlSpan.className = 'custom-engine-url';
+            urlSpan.textContent = item.url == null ? '' : item.url;
+            div.appendChild(nameSpan);
+            div.appendChild(urlSpan);
             const del = document.createElement('button');
             del.className = 'custom-engine-delete';
             del.textContent = '删除';
@@ -594,6 +600,34 @@ function updatePlaceholder() {
     input.placeholder = `在${engineName||'搜索引擎'}中搜索...`;
 }
 
+function escapeHtml(str) {
+    return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function parseHtmlToFragment(html) {
+    const doc = new DOMParser().parseFromString(String(html == null ? '' : html), 'text/html');
+    const frag = document.createDocumentFragment();
+    const body = doc.body;
+    while (body.firstChild) frag.appendChild(body.firstChild);
+    return frag;
+}
+
+function safeUrl(url) {
+    const raw = String(url == null ? '' : url).trim();
+    if (/^(https?|ftp|mailto|tel):/i.test(raw) || /^(\/|\.\/|\.\.\/|#|\?)/.test(raw)) {
+        return raw;
+    }
+    if (/^[\w.+-]+@[\w-]+\.[\w.-]+$/.test(raw)) {
+        return 'mailto:' + raw;
+    }
+    return raw ? 'https://' + raw : '#';
+}
+
 function showToast(message) {
     const toast = document.getElementById('toast');
     if (!toast) return;
@@ -624,7 +658,7 @@ function populateQuickNav() {
         listItem.className = 'nav-link';
 
         const anchor = document.createElement('a');
-        anchor.href = link.url;
+        anchor.href = safeUrl(link.url);
         anchor.target = "_blank";
         anchor.textContent = link.name;
 
@@ -680,19 +714,31 @@ function removeLink(index) {
 
 let modal, modalTitle, linkForm, editIndexInput, linkNameInput, linkUrlInput;
 
-function openAddModal() {
+function setModalOrigin(modalEl, btnEl) {
+    if (!modalEl || !btnEl) return;
+    const content = modalEl.querySelector('.modal-content');
+    if (!content) return;
+    const rect = content.getBoundingClientRect();
+    const btnRect = btnEl.getBoundingClientRect();
+    const originX = ((btnRect.left + btnRect.width / 2) - rect.left) / rect.width * 100;
+    const originY = ((btnRect.top + btnRect.height / 2) - rect.top) / rect.height * 100;
+    content.style.transformOrigin = `${originX.toFixed(1)}% ${originY.toFixed(1)}%`;
+}
+
+function openAddModal(triggerEl) {
     if (!modal || !modalTitle || !linkForm || !editIndexInput) return;
     modalTitle.textContent = "添加快捷导航";
     linkForm.reset();
     editIndexInput.value = "";
     modal.style.display = "block";
     modal.classList.remove('closing');
+    setModalOrigin(modal, triggerEl || document.getElementById('addLinkBtn'));
     requestAnimationFrame(() => {
         modal.classList.add('show');
     });
 }
 
-function openEditModal(index) {
+function openEditModal(index, triggerEl) {
     const link = customLinks[index];
     if (link && modal && modalTitle && linkNameInput && linkUrlInput && editIndexInput) {
         modalTitle.textContent = "编辑快捷导航";
@@ -701,6 +747,7 @@ function openEditModal(index) {
         editIndexInput.value = index;
         modal.style.display = "block";
         modal.classList.remove('closing');
+        setModalOrigin(modal, triggerEl || modal);
         requestAnimationFrame(() => {
             modal.classList.add('show');
         });
@@ -714,7 +761,7 @@ function closeModal() {
     setTimeout(() => {
         modal.style.display = "none";
         modal.classList.remove('closing');
-    }, 200);
+    }, 340);
 }
 
 function renderSearchHistory() {
@@ -906,7 +953,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const saveBtn = document.getElementById("saveLinkBtn");
     const searchInput = document.getElementById('searchInput');
 
-    if (addBtn) addBtn.onclick = openAddModal;
+    if (addBtn) addBtn.onclick = () => openAddModal();
     if (closeBtn) closeBtn.onclick = closeModal;
     if (cancelBtn) cancelBtn.onclick = closeModal;
 
@@ -1058,39 +1105,15 @@ function openSettingsModal() {
     if (!settingsModal) return;
     settingsModal.style.display = 'block';
     settingsModal.classList.remove('closing');
+    setModalOrigin(settingsModal, document.getElementById('modernUiSettingsBtn') || settingsBtn);
     requestAnimationFrame(() => {
         settingsModal.classList.add('show');
+        const sidebar = settingsModal.querySelector('.settings-sidebar ul');
+        if (sidebar) {
+            const firstItem = sidebar.querySelector('li');
+            if (firstItem) firstItem.click();
+        }
     });
-    const modalContent = settingsModal.querySelector('.modal-content');
-    if (modalContent) {
-        modalContent.style.top = '50%';
-        modalContent.style.left = '50%';
-        modalContent.style.transform = 'translate(-50%, -50%)';
-    }
-    const sidebar = settingsModal.querySelector('.settings-sidebar ul');
-    const sections = settingsModal.querySelectorAll('.settings-section');
-    const mainTitle = document.getElementById('settingsMainTitle');
-    if (sidebar) {
-        sidebar.querySelectorAll('li').forEach(li => {
-            if (li.getAttribute('data-section') === 'cgsz') {
-                li.classList.add('active');
-            } else {
-                li.classList.remove('active');
-            }
-        });
-    }
-    if (sections) {
-        sections.forEach(sec => {
-            if (sec.getAttribute('data-section') === 'cgsz') {
-                sec.style.display = '';
-            } else {
-                sec.style.display = 'none';
-            }
-        });
-    }
-    if (mainTitle) {
-        mainTitle.textContent = '常规设置';
-    }
 }
 function closeSettingsModal() {
     if (!settingsModal) return;
@@ -1099,7 +1122,7 @@ function closeSettingsModal() {
     setTimeout(() => {
         settingsModal.style.display = 'none';
         settingsModal.classList.remove('closing');
-    }, 200);
+    }, 300);
 }
 if (settingsBtn) settingsBtn.onclick = openSettingsModal;
 if (settingsClose) settingsClose.onclick = closeSettingsModal;
@@ -1260,22 +1283,49 @@ async function renderMusicList(forceAnimation = false) {
             musicBody.innerHTML = '<div class="music-empty">暂无音乐，请添加</div>';
             return;
         }
-        
-        musicBody.innerHTML = songs.map((song, index) => `
-            <div class="music-item${needAnimation ? ' slide-in' : ''}" data-index="${index}"${needAnimation ? ` style="animation-delay: ${index * 0.08}s"` : ''}>
-                <div class="music-item-icon">
-                    ${song.icon ? `<img src="${song.icon}" onerror="this.parentElement.innerHTML='♪'">` : '♪'}
-                </div>
-                <div class="music-item-name">
-                    <div class="music-title-wrapper">
-                        <div class="music-title-text">${song.name || '未知歌曲'}</div>
-                    </div>
-                </div>
-                <div class="music-item-delete" data-index="${index}">
-                    <i class="fas fa-trash-alt"></i>
-                </div>
-            </div>
-        `).join('');
+
+        musicBody.innerHTML = '';
+        songs.forEach((song, index) => {
+            const item = document.createElement('div');
+            item.className = 'music-item' + (needAnimation ? ' slide-in' : '');
+            item.dataset.index = index;
+            if (needAnimation) item.style.animationDelay = (index * 0.08) + 's';
+
+            const iconWrap = document.createElement('div');
+            iconWrap.className = 'music-item-icon';
+            if (song.icon) {
+                const img = document.createElement('img');
+                img.src = String(song.icon);
+                img.addEventListener('error', function() {
+                    this.parentElement.textContent = '♪';
+                });
+                iconWrap.appendChild(img);
+            } else {
+                iconWrap.textContent = '♪';
+            }
+            item.appendChild(iconWrap);
+
+            const nameWrap = document.createElement('div');
+            nameWrap.className = 'music-item-name';
+            const titleWrapper = document.createElement('div');
+            titleWrapper.className = 'music-title-wrapper';
+            const titleText = document.createElement('div');
+            titleText.className = 'music-title-text';
+            titleText.textContent = song.name || '未知歌曲';
+            titleWrapper.appendChild(titleText);
+            nameWrap.appendChild(titleWrapper);
+            item.appendChild(nameWrap);
+
+            const delBtn = document.createElement('div');
+            delBtn.className = 'music-item-delete';
+            delBtn.dataset.index = index;
+            const delIcon = document.createElement('i');
+            delIcon.className = 'fas fa-trash-alt';
+            delBtn.appendChild(delIcon);
+            item.appendChild(delBtn);
+
+            musicBody.appendChild(item);
+        });
         
         document.querySelectorAll('.music-item-delete').forEach(btn => {
             btn.addEventListener('click', async function(e) {
@@ -1336,7 +1386,7 @@ if (modernUiMusicBtn) {
     }).catch(e => {
         console.error('Failed to initialize music DB:', e);
     });
-    
+
     modernUiMusicBtn.addEventListener('click', function(e) {
         if (modernUiMusicBtn.classList.contains('expanded')) {
             if (!e.target.closest('.btn-content')) {
@@ -1373,7 +1423,7 @@ if (musicClose) {
     musicClose.addEventListener('click', function(e) {
         e.stopPropagation();
         modernUiMusicBtn.classList.remove('expanded');
-        modernUiMusicBtn.title = '音乐';
+        modernUiMusicBtn.title = '';
     });
 }
 
@@ -1460,7 +1510,7 @@ document.addEventListener('click', function(e) {
     }
 });
 applyCustomBackground(customBackground);
-    const CURRENT_VERSION = '12.1';
+    const CURRENT_VERSION = '13.6';
     const GITHUB_API = 'https://api.github.com/repos/itnproject/Minimalist-Homepage/releases/latest';
     const updateInfoDiv = document.getElementById('updateInfo');
     const checkUpdateBtn = document.getElementById('checkUpdateBtn');
@@ -1482,7 +1532,7 @@ applyCustomBackground(customBackground);
 
     async function fetchLatestRelease() {
 
-        updateInfoDiv.innerHTML = '正在检查更新...';
+        updateInfoDiv.textContent = '正在检查更新...';
         try {
             const res = await fetch(GITHUB_API);
             if (!res.ok) throw new Error('网络错误');
@@ -1490,26 +1540,48 @@ applyCustomBackground(customBackground);
             latestRelease = data;
             const latestVer = data.tag_name || data.name;
             const cmp = compareVersion(latestVer, CURRENT_VERSION);
-            let html = `<b>最新版本:</b> ${latestVer}`;
+
+            updateInfoDiv.innerHTML = '';
+            const verLine = document.createElement('b');
+            verLine.textContent = '最新版本: ' + latestVer;
+            updateInfoDiv.appendChild(verLine);
+
             if (cmp > 0) {
-                html += `<br><b style='color:#d85831;'>有新版本可用！</b>`;//有新版本！ヾ(≧▽≦*)o
+                updateInfoDiv.appendChild(document.createElement('br'));
+                const newerLine = document.createElement('b');
+                newerLine.style.color = '#d85831';
+                newerLine.textContent = '有新版本可用！';
+                updateInfoDiv.appendChild(newerLine);
                 downloadUpdateBtn.style.display = '';
             } else {
-                html += `<br>已是最新版本。`;
+                updateInfoDiv.appendChild(document.createElement('br'));
+                updateInfoDiv.appendChild(document.createTextNode('已是最新版本。'));
                 downloadUpdateBtn.style.display = 'none';
             }
             if (data.body) {
-                html += `<br><b>更新内容:</b><div class="update-content-wrapper">` + renderMarkdownToHtml(data.body) + `</div>`;
+                updateInfoDiv.appendChild(document.createElement('br'));
+                const bodyLabel = document.createElement('b');
+                bodyLabel.textContent = '更新内容:';
+                updateInfoDiv.appendChild(bodyLabel);
+                const bodyWrap = document.createElement('div');
+                bodyWrap.className = 'update-content-wrapper';
+                bodyWrap.appendChild(parseHtmlToFragment(renderMarkdownToHtml(data.body)));
+                updateInfoDiv.appendChild(bodyWrap);
             }
-            updateInfoDiv.innerHTML = html;
         } catch (e) {
-            updateInfoDiv.innerHTML = '检查更新失败: ' + e.message;
+            updateInfoDiv.textContent = '检查更新失败: ' + e.message;
             downloadUpdateBtn.style.display = 'none';
         }
     }
     function renderMarkdownToHtml(md) {
         if (!md) return '';
-        let html = md
+        let escaped = md
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+        let html = escaped
             .replace(/\r\n|\r|\n/g, '<br>')
             .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
             .replace(/__(.*?)__/g, '<b>$1</b>')
@@ -1550,7 +1622,15 @@ applyCustomBackground(customBackground);
             }
         };
     }
-    if (updateInfoDiv) fetchLatestRelease();
+    if (updateInfoDiv) {
+        const lastCheck = localStorage.getItem('lastUpdateCheck');
+        const now = Date.now();
+        const oneWeek = 7 * 24 * 60 * 60 * 1000;
+        if (!lastCheck || (now - parseInt(lastCheck)) > oneWeek) {
+            fetchLatestRelease();
+            localStorage.setItem('lastUpdateCheck', now.toString());
+        }
+    }
 });
 
 function unloadAllExtensions() {
@@ -1604,44 +1684,11 @@ function loadExtension(ext) {
                          fileName.endsWith('.itnprojectcss') ? 'css' : 'project';
             if (type === 'js') {
                 try {
-                    const api = _extApi || {};
-                    const apiCode = Object.keys(api).map(k => {
-                        if (typeof api[k] === 'function') {
-                            return 'var ' + k + ' = ' + api[k].toString() + ';';
-                        }
-                        return 'var ' + k + ' = ' + JSON.stringify(api[k]) + ';';
-                    }).join('\n');
-                    const fullCode = apiCode + '\n' + content;
-                    
-                    const iframe = document.createElement('iframe');
-                    iframe.sandbox = 'allow-scripts allow-same-origin allow-modals';
-                    iframe.style.display = 'none';
-                    iframe.src = chrome.runtime.getURL('lib/sandbox/sandbox.html') + '?t=' + Date.now() + '&' + ext.id;
-                    document.body.appendChild(iframe);
-                    
-                    const handler = function(e) {
-                        if (e.data && e.data.id === ext.id && e.data.type === 'extDone') {
-                            window.removeEventListener('message', handler);
-                            setTimeout(function() { iframe.remove(); }, 100);
-                            console.log('Extension JS executed:', ext.name, fileName);
-                            loadedExtensions.push({ ...ext, loaded: true, file: fileName });
-                        } else if (e.data && e.data.id === ext.id && e.data.type === 'extError') {
-                            window.removeEventListener('message', handler);
-                            setTimeout(function() { iframe.remove(); }, 100);
-                            showToast('扩展执行错误: ' + ext.name + ' - ' + e.data.error);
-                        }
-                    };
-                    window.addEventListener('message', handler);
-                    
-                    iframe.onload = function() {
-                        setTimeout(function() {
-                            iframe.contentWindow.postMessage({
-                                action: 'execCode',
-                                code: fullCode,
-                                id: ext.id
-                            }, '*');
-                        }, 10);
-                    };
+                    const host = (typeof browser !== 'undefined' ? browser : chrome);
+                    const shadowUrl = host.runtime.getURL('lib/sandbox/sandbox.html') + '?t=' + Date.now() + '&' + encodeURIComponent(ext.id);
+                    window.dispatchEvent(new CustomEvent('itnproject-shadow', {
+                        detail: { extId: ext.id, extName: ext.name, fileName: fileName, content: content, sandboxUrl: shadowUrl }
+                    }));
                 } catch (e) {
                     console.error('Error loading JS extension:', ext.name, fileName, e);
                     showToast('扩展执行错误: ' + ext.name + ' - ' + e.message);
@@ -1654,8 +1701,8 @@ function loadExtension(ext) {
                 loadedExtensions.push({ ...ext, loaded: true, file: fileName, element: style });
             } else if (type === 'project') {
                 const div = document.createElement('div');
-                div.innerHTML = content;
                 div.setAttribute('data-ext-id', ext.id);
+                div.appendChild(parseHtmlToFragment(content));
                 document.body.appendChild(div);
                 loadedExtensions.push({ ...ext, loaded: true, file: fileName, element: div });
             }
@@ -1691,7 +1738,27 @@ function renderExtensionList() {
         text.className = 'extension-text';
         const typeLabel = ext.type === 'theme' ? '主题' : '插件';
         const typeClass = ext.type === 'theme' ? 'ext-type-theme' : 'ext-type-plugin';
-        text.innerHTML = `<div class="extension-name">${ext.name} <span class="ext-type-badge ${typeClass}">${typeLabel}</span><span class="ext-version">v${ext.version || '1.0.0'}</span></div><div class="extension-path">${ext.author || '未知'}${ext.description ? ' · ' + ext.description : ''}</div>`;
+
+        const nameRow = document.createElement('div');
+        nameRow.className = 'extension-name';
+        nameRow.appendChild(document.createTextNode((ext.name == null ? '' : ext.name) + ' '));
+        const typeBadge = document.createElement('span');
+        typeBadge.className = 'ext-type-badge ' + typeClass;
+        typeBadge.textContent = typeLabel;
+        nameRow.appendChild(typeBadge);
+        const verSpan = document.createElement('span');
+        verSpan.className = 'ext-version';
+        verSpan.textContent = 'v' + (ext.version || '1.0.0');
+        nameRow.appendChild(verSpan);
+
+        const pathRow = document.createElement('div');
+        pathRow.className = 'extension-path';
+        let pathText = ext.author || '未知';
+        if (ext.description) pathText += ' · ' + ext.description;
+        pathRow.textContent = pathText;
+
+        text.appendChild(nameRow);
+        text.appendChild(pathRow);
 
         info.appendChild(dot);
         info.appendChild(text);
@@ -1876,21 +1943,16 @@ document.addEventListener('DOMContentLoaded', function() {
             window._activeTranslation = e.data.extName || 'Unknown';
             if (typeof _extApi.translate === 'function') {
                 const cleanup = _extApi.translate(e.data.translations);
-                console.log('loadedExtensions:', loadedExtensions);
-                console.log('extName:', e.data.extName);
                 const extRecord = loadedExtensions.find(ext => ext.name === e.data.extName);
-                console.log('extRecord:', extRecord);
                 if (extRecord) {
                     extRecord.cleanup = cleanup;
-                    console.log('cleanup saved');
                 } else {
-                    console.warn('extRecord not found, using global cleanup');
                     window._extCleanup = cleanup;
                 }
             }
         }
     });
-    
+
     const expandDirInput = document.getElementById('expandDirInput');
     if (expandDirInput) {
         expandDirInput.value = expandDir;
@@ -1969,24 +2031,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const modernUiBg = document.getElementById('modernUiBg');
     const modernUiQuote = document.getElementById('modernUiQuote');
     const modernUiEngineSelector = document.getElementById('modernUiEngineSelector');
-
-    const quotes = [
-        "桃李不言，下自成蹊。",
-        "路漫漫其修远兮，吾将上下而求索。",
-        "千里之行，始于足下。",
-        "学而不思则，思而不学则殆。",
-        "知之为知之，不知为不知，是知也。",
-        "三人行，必有我师焉。",
-        "己所不欲，勿施于人。",
-        "温故而知新，可以为师矣。",
-        "逝者如斯夫，不舍昼夜。",
-        "天行健，君子以自强不息。",
-        "地势坤，君子以厚德载物。",
-        "不积跬步，无以至千里。",
-        "锲而不舍，金石可镂。",
-        "宝剑锋从磨砺出，梅花香自苦寒来。",
-        "书山有路勤为径，学海无涯苦作舟。"
-    ];
+    const fallbackQuotes = window.fallbackQuotes || [];
 
     let isModernUi = SyncStorage.getItem('modernUiEnabled', true);
 
@@ -2086,12 +2131,12 @@ document.addEventListener('DOMContentLoaded', function() {
         links.forEach((link, index) => {
             const item = document.createElement('a');
             item.className = 'modern-ui-nav-item';
-            item.href = link.url;
+            item.href = safeUrl(link.url);
             item.target = '_blank';
             item.dataset.index = index;
 
             let iconClass = 'fa-solid fa-link';
-            const lowerName = link.name.toLowerCase();
+            const lowerName = String(link.name == null ? '' : link.name).toLowerCase();
             for (const [key, icon] of Object.entries(iconMap)) {
                 if (lowerName.includes(key)) {
                     iconClass = icon;
@@ -2099,10 +2144,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
 
-            item.innerHTML = `
-                <i class="${iconClass}"></i>
-                <span class="nav-tooltip">${link.name}</span>
-            `;
+            const iconEl = document.createElement('i');
+            iconEl.className = iconClass;
+            item.appendChild(iconEl);
+
+            const tooltip = document.createElement('span');
+            tooltip.className = 'nav-tooltip';
+            tooltip.textContent = link.name == null ? '' : link.name;
+            item.appendChild(tooltip);
+
             modernUiNav.appendChild(item);
         });
 
@@ -2110,7 +2160,7 @@ document.addEventListener('DOMContentLoaded', function() {
         addBtn.className = 'modern-ui-nav-add';
         addBtn.innerHTML = '<i class="fas fa-plus"></i>';
         addBtn.onclick = function() {
-            openAddModal();
+            openAddModal(addBtn);
         };
         modernUiNav.appendChild(addBtn);
     }
@@ -2203,16 +2253,16 @@ document.addEventListener('DOMContentLoaded', function() {
         initModernUi();
     }
 
-    if (modernUiSwitch) {
-        modernUiSwitch.addEventListener('change', function() {
-            isModernUi = this.checked;
-            SyncStorage.setItem('modernUiEnabled', isModernUi);
-            applyModernUiState();
-            if (isModernUi) {
-                initModernUi();
-            }
-        });
-    }
+    // if (modernUiSwitch) {
+    //     modernUiSwitch.addEventListener('change', function() {
+    //         isModernUi = this.checked;
+    //         SyncStorage.setItem('modernUiEnabled', isModernUi);
+    //         applyModernUiState();
+    //         if (isModernUi) {
+    //             initModernUi();
+    //         }
+    //     });
+    // }
 
     if (modernUiSearchInput) {
         modernUiSearchInput.addEventListener('keypress', function(e) {
@@ -2406,31 +2456,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const modernUiSettingsBtn = document.getElementById('modernUiSettingsBtn');
     if (modernUiSettingsBtn) {
-        modernUiSettingsBtn.addEventListener('click', function() {
-            const settingsModal = document.getElementById('settingsModal');
-            if (!settingsModal) return;
-            
-            settingsModal.style.display = 'block';
-            const modalContent = settingsModal.querySelector('.modal-content');
-            if (modalContent) {
-                modalContent.style.opacity = '0';
-                modalContent.style.transform = 'translate(-50%, -50%) scale(0.8)';
-                modalContent.style.transition = 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
-                
-                requestAnimationFrame(() => {
-                    requestAnimationFrame(() => {
-                        modalContent.style.opacity = '1';
-                        modalContent.style.transform = 'translate(-50%, -50%) scale(1)';
-                    });
-                });
-            }
-            
-            const sidebar = settingsModal.querySelector('.settings-sidebar ul');
-            if (sidebar) {
-                const firstItem = sidebar.querySelector('li');
-                if (firstItem) firstItem.click();
-            }
-        });
+        modernUiSettingsBtn.removeAttribute('onclick');
     }
 
     if (modernUiEngineSelector) {
@@ -2571,7 +2597,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     break;
                 case 'edit':
                     if (currentNavIndex >= 0) {
-                        openEditModal(currentNavIndex);
+                        const navItemEl = document.querySelector(`.modern-ui-nav-item[data-index="${currentNavIndex}"]`) ||
+                            document.querySelector(`.nav-item[data-index="${currentNavIndex}"]`);
+                        openEditModal(currentNavIndex, navItemEl);
                     }
                     break;
                 case 'delete':

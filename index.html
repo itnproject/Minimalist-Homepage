@@ -1,26 +1,21 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <!--
-    欢迎使用极简首页! 已开源:https://github.com/itnproject/Minimalist-Homepage
-    12.1(正式版)更新:
-        - 调整设置部分功能位置
-        - 修复部分已知bug
-        - 增加大时间隐藏
-        - 加入超强性能模式
-          - 关闭动效
-          - 关闭光辉效果
-          - 关闭动画
-          - 关闭所有不必要的效果
-        - 更改名言名句
-          - 改为本地更新
-          - 更改换句时长
-          - 加入名言名句点换 [实验性]
-          - 目前更新498首
-        - 加入极简音乐播放器（本地）
-          - 增加线性动画
-          - 优化播放
-          - 增加删除
-        然后吃了康师傅拉面，中辣！
+    欢迎使用极简首页! 已开源:https://github.com/itnproject/Minimalist-Homepage-BE
+    13.6(正式版)更新:
+        - 修复已知问题(bug)
+        - 增加对Gecko内核(Firefox)的支持
+        - 已修复基于AI审查的问题
+          - 消息协议不匹配
+          - 修复XSS漏洞防注入
+          - 降低拉取新release频率
+        - 重写沙箱安全机制
+        - 重写扩展系统
+          - 增加兼容
+          - 更新消息处理
+        - 名言名句点换转正
+        - 增加名言名句（现655首）
+        - 统一更多页面动画
 -->
 <head>
     <meta charset="UTF-8">
@@ -193,7 +188,7 @@
             </div>
             <div class="modal-body settings-section" data-section="general">
                 <div class="form-group" style="font-weight:bold;margin-bottom:6px;">界面</div>
-                <div class="theme-demo-group">
+                <!-- <div class="theme-demo-group">
                     <div style="display:flex;flex-direction:column;align-items:center;">
                         <img src="image/ModernUI.png" alt="现代UI" class="theme-option" data-theme="modern">
                         <div class="theme-demo-label">现代UI</div>
@@ -202,7 +197,7 @@
                         <img src="image/ClassicUI.png" alt="经典UI" class="theme-option" data-theme="classic">
                         <div class="theme-demo-label">经典UI</div>
                     </div>
-                </div>
+                </div> -->
                 <div class="form-group classic-ui-hide" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
                     <label for="toggleSuperPerformance" style="margin:0;">超强性能模式</label>
                     <label class="toggle-switch">
@@ -210,6 +205,13 @@
                         <span class="toggle-slider"></span>
                     </label>
                 </div>
+                <div class="form-group classic-ui-hide" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                        <label for="toggleClickQuoteChange" style="margin:0;line-height:26px;">名言名句点换</label>
+                        <label class="toggle-switch" style="margin-top:3px;">
+                            <input type="checkbox" id="toggleClickQuoteChange">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
                 <div class="form-group">
                     <label>自定义背景(URL或颜色代码)</label>
                     <input type="text" id="customBgInput" placeholder="#f5f7fa 或 https://example.com/•••.png">
@@ -238,11 +240,6 @@
                     <div id="customEngineList" style="margin-top:10px;"></div>
                 </div>
             </div>
-            <div class="modal-body settings-section" data-section="nav" style="display:none">
-                <div class="form-group">
-                    <label>快捷导航设置：把它移到设置内就报错，这个区块可能会删除</label><!---删除了,但是还没有-->
-                </div>
-            </div>
             <div class="modal-body settings-section" data-section="cgsz" style="display:none">
                 <div class="form-group" style="font-weight:bold;margin-bottom:6px;">主题</div>
                                 <div class="theme-demo-group">
@@ -251,7 +248,7 @@
                                         <div class="theme-demo-label">浅色</div>
                                     </div>
                                     <div style="display:flex;flex-direction:column;align-items:center;">
-                                        <img src="image/dark.png" alt="深色主题" class="theme-option" data-theme="dark">
+                                        <img src="image/Dark.png" alt="深色主题" class="theme-option" data-theme="dark">
                                         <div class="theme-demo-label">深色</div>
                                     </div>
                                 </div><style>
@@ -388,7 +385,7 @@
                 <br><label>一款好用且美丽的番茄钟</label>
             </div>
             <div class="modal-body settings-section" data-section="sygxing" style="display:none; ">
-                <b id="currentVersionLabel">当前版本: </b><l1abel>12.1(正式版)</l1abel>
+                <b id="currentVersionLabel">当前版本: </b><l1abel>13.6(正式版)</l1abel>
                 <div id="updateInfo" style="margin-top:10px;"></div>
                 <button id="checkUpdateBtn" class="btn btn-primary" style="margin-top:10px;">检查更新</button>
                 <button id="downloadUpdateBtn" class="btn btn-secondary" style="margin-top:10px;display:none;">立即更新</button>
@@ -417,18 +414,12 @@
                             <span class="toggle-slider"></span>
                         </label>
                     </div>
-                    <div class="form-group classic-ui-hide" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-                        <label for="toggleClickQuoteChange" style="margin:0;line-height:26px;">名言名句点换 [实验性]</label>
-                        <label class="toggle-switch" style="margin-top:3px;">
-                            <input type="checkbox" id="toggleClickQuoteChange">
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
+                    
                 </div>
             </div>
             <div class="modal-body settings-section" data-section="about" style="display:none; text-align: center;">
                 <br><img src="image/tubiao.png" alt="极简首页" class="极简首页logo" width="90" height="90">
-                <br><label>极简首页</label><br><label>12.1</label><br><br>
+                <br><label>极简首页</label><br><label>13.6</label><br><br>
                 <label>由itnproject制作</label>
                 <br><label>使用AGPL3.0在github开源</label>
                 <br><label>修改代码后请使用AGPL3.0在Github开源</label><br><br>

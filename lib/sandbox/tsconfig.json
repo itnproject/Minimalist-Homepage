@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "target": "ES2015",
+    "strict": true,
+    "outDir": ".",
+    "rootDir": "."
+  },
+  "include": ["sandbox.ts"],
+  "exclude": ["sandbox.js"]
+}
